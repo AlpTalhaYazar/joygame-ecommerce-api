@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  mssql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    environment:
+      - "ACCEPT_EULA=1"
+      - "MSSQL_SA_PASSWORD=SU2orange!"
+    ports:
+      - "1433:1433"
+    hostname: mssql
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+volumes:
+  mssql_data:
