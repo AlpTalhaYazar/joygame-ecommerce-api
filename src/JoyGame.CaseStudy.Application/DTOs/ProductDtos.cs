@@ -1,0 +1,1 @@
+namespace JoyGame.CaseStudy.Application.DTOs;
