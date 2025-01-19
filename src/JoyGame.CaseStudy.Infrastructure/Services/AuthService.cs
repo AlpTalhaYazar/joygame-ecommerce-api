@@ -46,7 +46,7 @@ public class AuthService(
         return new AuthResponseDto
         {
             Token = token,
-            User = MapToUserDto(user)
+            User = UserDto.MapToUserDto(user)
         };
     }
 
@@ -180,19 +180,5 @@ public class AuthService(
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
         return Convert.ToBase64String(randomNumber);
-    }
-
-    private static UserDto MapToUserDto(User user)
-    {
-        return new UserDto
-        {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            BusinessStatus = user.BusinessStatus,
-            Roles = user.UserRoles.Select(ur => ur.Role.Name).ToList()
-        };
     }
 }
