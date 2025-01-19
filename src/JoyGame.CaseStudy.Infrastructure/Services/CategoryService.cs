@@ -53,7 +53,7 @@ public class CategoryService(
         {
             Name = createCategoryDto.Name,
             Description = createCategoryDto.Description ?? String.Empty,
-            ParentId = createCategoryDto.ParentId ?? 0,
+            ParentId = createCategoryDto.ParentId,
             Slug = slug,
             Status = EntityStatus.Active,
             CreatedBy = "System",
@@ -90,7 +90,7 @@ public class CategoryService(
 
         category.Name = updateCategoryDto.Name;
         category.Description = updateCategoryDto.Description ?? String.Empty;
-        category.ParentId = updateCategoryDto.ParentId ?? 0;
+        category.ParentId = updateCategoryDto.ParentId;
         category.Slug = GenerateSlug(updateCategoryDto.Name);
 
         var updatedCategory = await _categoryRepository.UpdateAsync(category);
@@ -144,7 +144,7 @@ public class CategoryService(
         var currentParentId = newParentId;
         var visitedIds = new HashSet<int> { categoryId };
 
-        while (currentParentId != 0)
+        while (currentParentId > 0)
         {
             if (!visitedIds.Add(currentParentId))
             {
@@ -157,7 +157,7 @@ public class CategoryService(
                 break;
             }
 
-            currentParentId = parent.ParentId;
+            currentParentId = parent.ParentId.Value;
         }
 
         return false;
