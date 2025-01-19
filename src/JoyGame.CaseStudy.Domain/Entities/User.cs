@@ -15,4 +15,5 @@ public class User : BaseEntity
     public UserStatus BusinessStatus { get; set; } = UserStatus.Active;
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new HashSet<UserRole>();
+    public virtual ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new HashSet<PasswordResetToken>();
 }
