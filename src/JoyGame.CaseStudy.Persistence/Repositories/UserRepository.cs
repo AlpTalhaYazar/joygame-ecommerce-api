@@ -49,4 +49,47 @@ public class UserRepository(ApplicationDbContext context) : BaseRepository<User>
 
         return permissions;
     }
+
+    public async Task<bool> SaveResetTokenAsync(int userId, string token, DateTime expiresAt)
+    {
+        var resetToken = new PasswordResetToken
+        {
+            UserId = userId,
+            Token = token,
+            ExpiresAt = expiresAt,
+            IsUsed = false,
+            CreatedBy = userId.ToString()
+        };
+
+        await _context.Set<PasswordResetToken>().AddAsync(resetToken);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> ValidateResetTokenAsync(string email, string token)
+    {
+        var user = await GetByEmailAsync(email);
+        if (user == null) return false;
+
+        var resetToken = await _context.Set<PasswordResetToken>()
+            .FirstOrDefaultAsync(rt =>
+                rt.UserId == user.Id &&
+                rt.Token == token &&
+                rt.ExpiresAt > DateTime.UtcNow &&
+                !rt.IsUsed);
+
+        return resetToken != null;
+    }
+
+    public async Task<bool> MarkResetTokenAsUsedAsync(string token)
+    {
+        var resetToken = await _context.Set<PasswordResetToken>()
+            .FirstOrDefaultAsync(rt => rt.Token == token);
+
+        if (resetToken == null) return false;
+
+        resetToken.IsUsed = true;
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }
