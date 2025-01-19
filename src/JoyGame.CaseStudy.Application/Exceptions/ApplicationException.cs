@@ -1,6 +1,3 @@
 namespace JoyGame.CaseStudy.Application.Exceptions;
 
-public class ApplicationException
-{
-    
-}
+public class ApplicationException(string message) : Exception(message);
