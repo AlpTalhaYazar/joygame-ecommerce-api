@@ -30,13 +30,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.ImageUrl)
             .HasMaxLength(500);
 
-        // Configure relationship with Category
         builder.HasOne(x => x.Category)
             .WithMany(x => x.Products)
             .HasForeignKey(x => x.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Add unique index for slug
         builder.HasIndex(x => x.Slug).IsUnique();
     }
 }

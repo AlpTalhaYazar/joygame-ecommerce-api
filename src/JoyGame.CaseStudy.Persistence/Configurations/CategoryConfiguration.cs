@@ -23,13 +23,14 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .IsRequired()
             .HasMaxLength(100);
 
-        // Configure self-referencing relationship for hierarchical categories
         builder.HasOne(x => x.Parent)
             .WithMany(x => x.Children)
             .HasForeignKey(x => x.ParentId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Add unique index for slug
+        builder.Property(x => x.ParentId)
+            .IsRequired(false);
+
         builder.HasIndex(x => x.Slug).IsUnique();
     }
 }

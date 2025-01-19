@@ -29,7 +29,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.LastName)
             .HasMaxLength(50);
 
-        // Add unique indexes
         builder.HasIndex(x => x.Username).IsUnique();
         builder.HasIndex(x => x.Email).IsUnique();
     }
