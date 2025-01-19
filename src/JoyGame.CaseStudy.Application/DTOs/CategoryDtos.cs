@@ -1,3 +1,4 @@
+using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
 
 namespace JoyGame.CaseStudy.Application.DTOs;
@@ -11,6 +12,20 @@ public record CategoryDto
     public int? ParentId { get; init; }
     public string? ParentName { get; init; }
     public EntityStatus Status { get; init; }
+
+    public static CategoryDto MapToCategoryDto(Category category)
+    {
+        return new CategoryDto
+        {
+            Id = category.Id,
+            Name = category.Name,
+            Description = category.Description,
+            Slug = category.Slug,
+            ParentId = category.ParentId,
+            ParentName = category.Parent?.Name,
+            Status = category.Status
+        };
+    }
 }
 
 public record CategoryTreeDto
