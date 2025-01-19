@@ -80,7 +80,6 @@ public class AuthService(
     {
         var user = await _userRepository.GetByEmailAsync(email);
 
-        // Always return true even if email doesn't exist (security best practice)
         if (user == null)
         {
             _logger.LogInformation("Password reset requested for non-existent email: {Email}", email);
@@ -91,10 +90,8 @@ public class AuthService(
             };
         }
 
-        // Generate password reset token
         var resetToken = GeneratePasswordResetToken();
 
-        // In a real application, save this token to the database
         await _userRepository.SaveResetTokenAsync(user.Id, resetToken, DateTime.UtcNow.AddHours(1));
 
         return new()
@@ -117,7 +114,6 @@ public class AuthService(
         user.PasswordHash = HashPassword(request.NewPassword);
         await _userRepository.UpdateAsync(user);
 
-        // Mark token as used
         await _userRepository.MarkResetTokenAsUsedAsync(request.ResetToken);
 
         _logger.LogInformation("Password reset successful for user: {Username}", user.Username);

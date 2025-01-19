@@ -14,10 +14,8 @@ public class DatabaseSeeder(ApplicationDbContext context, ILogger<DatabaseSeeder
     {
         try
         {
-            // Ensure database is created and migrations are applied
             await context.Database.MigrateAsync();
 
-            // Seed in order of dependencies
             await SeedRolesAndPermissionsAsync();
             await SeedAdminUserAsync();
             await SeedCategoriesAsync();
@@ -57,10 +55,8 @@ public class DatabaseSeeder(ApplicationDbContext context, ILogger<DatabaseSeeder
             await context.Roles.AddRangeAsync(new[] { adminRole, managerRole, userRole });
             await context.SaveChangesAsync();
 
-            // Assign permissions to roles
             var allPermissions = await context.Permissions.ToListAsync();
 
-            // Admin gets all permissions
             foreach (var permission in allPermissions)
             {
                 await context.RolePermissions.AddAsync(new RolePermission
@@ -70,7 +66,6 @@ public class DatabaseSeeder(ApplicationDbContext context, ILogger<DatabaseSeeder
                 });
             }
 
-            // Manager gets view and manage permissions
             foreach (var permission in allPermissions)
             {
                 await context.RolePermissions.AddAsync(new RolePermission
@@ -80,7 +75,6 @@ public class DatabaseSeeder(ApplicationDbContext context, ILogger<DatabaseSeeder
                 });
             }
 
-            // User gets only view permissions
             var viewPermissions = allPermissions.Where(p => p.Name.EndsWith("_view"));
             foreach (var permission in viewPermissions)
             {
@@ -105,7 +99,7 @@ public class DatabaseSeeder(ApplicationDbContext context, ILogger<DatabaseSeeder
             {
                 Username = "admin",
                 Email = "admin@joygame.com",
-                PasswordHash = HashPassword("Admin123!"), // In production, use a proper password hashing library
+                PasswordHash = HashPassword("Admin123!"),
                 FirstName = "System",
                 LastName = "Administrator",
                 Status = EntityStatus.Active,
@@ -344,7 +338,6 @@ public class DatabaseSeeder(ApplicationDbContext context, ILogger<DatabaseSeeder
 
             var products = new List<Product>
             {
-                // Action Games Category
                 new()
                 {
                     Name = "The Last of Us Part II",
@@ -1949,7 +1942,6 @@ public class DatabaseSeeder(ApplicationDbContext context, ILogger<DatabaseSeeder
 
     private static string HashPassword(string password)
     {
-        // In a real application, use a proper password hashing library like BCrypt
         return Convert.ToBase64String(
             SHA256.HashData(Encoding.UTF8.GetBytes(password)));
     }

@@ -30,7 +30,6 @@ public static class DependencyInjection
         return services;
     }
 
-    // This method will handle both migration and seeding
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
@@ -41,11 +40,9 @@ public static class DependencyInjection
         {
             logger.LogInformation("Starting database initialization...");
 
-            // First, initialize the database (migrations)
             var initializer = services.GetRequiredService<DatabaseInitializer>();
             await initializer.InitializeAsync();
 
-            // Then, seed the data
             var seeder = services.GetRequiredService<DatabaseSeeder>();
             await seeder.SeedAsync();
 

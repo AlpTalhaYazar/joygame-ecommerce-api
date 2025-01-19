@@ -144,7 +144,6 @@ public class UserService(
 
     private static string HashPassword(string password)
     {
-        // In a real application, use a proper password hashing library like BCrypt
         return Convert.ToBase64String(
             SHA256.HashData(Encoding.UTF8.GetBytes(password)));
     }

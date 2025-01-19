@@ -10,28 +10,24 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// First, let's configure essential services
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Configure JSON serialization settings
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.WriteIndented = true;
     });
 
-// Configure CORS for our Angular frontend
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins("http://localhost:4200") // Your Angular app's URL
+        policy.WithOrigins("http://localhost:4200")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
     });
 });
 
-// Configure Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("CategoryManagement", policy =>
@@ -40,32 +36,27 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new PermissionRequirement("product_manage")));
 });
 
-// Register our custom services from other layers
-builder.Services.AddPersistence(builder.Configuration); // Database and repositories
-builder.Services.AddInfrastructure(builder.Configuration); // Services and infrastructure components
+builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration);
 
-// Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 
-// Configure logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 if (!builder.Environment.IsDevelopment())
 {
-    builder.Logging.AddFile("Logs/app-{Date}.log"); // Using Serilog file logging
+    builder.Logging.AddFile("Logs/app-{Date}.log");
 }
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 else
 {
-    // Use custom exception handler middleware in production
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
@@ -85,7 +76,6 @@ app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = Dat
    .WithName("HealthCheck")
    .WithOpenApi();
 
-// Initialize the database (apply migrations, seed data if needed)
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;

@@ -15,12 +15,10 @@ public class DatabaseInitializer(
     {
         try
         {
-            // Check if we need to perform any migrations
             if (context.Database.GetPendingMigrations().Any())
             {
                 logger.LogInformation("Starting to apply pending database migrations...");
 
-                // Apply any pending migrations
                 await context.Database.MigrateAsync();
 
                 logger.LogInformation("Successfully applied all pending migrations");
@@ -30,7 +28,6 @@ public class DatabaseInitializer(
                 logger.LogInformation("No pending migrations found. Database is up to date");
             }
 
-            // Ensure database exists (this is safe to call even if DB exists)
             await context.Database.EnsureCreatedAsync();
 
             logger.LogInformation("Database initialization completed successfully");
@@ -39,13 +36,11 @@ public class DatabaseInitializer(
         {
             logger.LogError(ex, "An error occurred while initializing the database");
 
-            // In development, we might want to see the full error
             if (environment.IsDevelopment())
             {
-                throw; // Re-throw in development for detailed error information
+                throw;
             }
 
-            // In production, throw a more user-friendly exception
             throw new ApplicationException("Failed to initialize the database. Please check the logs for more details.");
         }
     }
