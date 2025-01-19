@@ -95,18 +95,33 @@ public class AuthService(
         var resetToken = GeneratePasswordResetToken();
 
         // In a real application, save this token to the database
-        // await _userRepository.SaveResetTokenAsync(user.Id, resetToken);
+        await _userRepository.SaveResetTokenAsync(user.Id, resetToken, DateTime.UtcNow.AddHours(1));
 
         return new()
         {
             ResetToken = resetToken,
+            ExpiryDate = DateTime.UtcNow.AddHours(1),
             Email = email
         };
     }
 
     public async Task<bool> ResetPasswordAsync(ResetPasswordDto request)
     {
-        throw new NotImplementedException();
+        if (!await _userRepository.ValidateResetTokenAsync(request.Email, request.ResetToken))
+        {
+            throw new BusinessRuleException("Invalid or expired reset token");
+        }
+
+        var user = await _userRepository.GetByEmailAsync(request.Email);
+
+        user.PasswordHash = HashPassword(request.NewPassword);
+        await _userRepository.UpdateAsync(user);
+
+        // Mark token as used
+        await _userRepository.MarkResetTokenAsUsedAsync(request.ResetToken);
+
+        _logger.LogInformation("Password reset successful for user: {Username}", user.Username);
+        return true;
     }
 
     private string GenerateJwtToken(User user, List<string> permissions)

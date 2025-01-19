@@ -71,14 +71,14 @@ public class UserRepository(ApplicationDbContext context) : BaseRepository<User>
         var user = await GetByEmailAsync(email);
         if (user == null) return false;
 
-        var resetToken = await _context.Set<PasswordResetToken>()
-            .FirstOrDefaultAsync(rt =>
+        var isResetTokenValid = await _context.Set<PasswordResetToken>()
+            .AnyAsync(rt =>
                 rt.UserId == user.Id &&
                 rt.Token == token &&
                 rt.ExpiresAt > DateTime.UtcNow &&
                 !rt.IsUsed);
 
-        return resetToken != null;
+        return isResetTokenValid;
     }
 
     public async Task<bool> MarkResetTokenAsUsedAsync(string token)

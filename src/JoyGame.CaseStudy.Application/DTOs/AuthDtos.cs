@@ -11,6 +11,7 @@ public record AuthResponseDto
 public record ForgotPasswordResponseDto
 {
     public required string ResetToken { get; init; }
+    public DateTime ExpiryDate { get; init; }
     public required string Email { get; init; }
 }
 
