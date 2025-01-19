@@ -5,8 +5,8 @@ namespace JoyGame.CaseStudy.Application.DTOs;
 public record UserDto
 {
     public int Id { get; init; }
-    public string Username { get; init; }
-    public string Email { get; init; }
+    public required string Username { get; init; }
+    public required string Email { get; init; }
     public string? FirstName { get; init; }
     public string? LastName { get; init; }
     public UserStatus BusinessStatus { get; init; }
@@ -15,9 +15,9 @@ public record UserDto
 
 public record CreateUserDto
 {
-    public string Username { get; init; }
-    public string Email { get; init; }
-    public string Password { get; init; }
+    public required string Username { get; init; }
+    public required string Email { get; init; }
+    public required string Password { get; init; }
     public string? FirstName { get; init; }
     public string? LastName { get; init; }
 }
@@ -31,6 +31,6 @@ public record UpdateUserDto
 
 public record ChangePasswordDto
 {
-    public string CurrentPassword { get; init; }
-    public string NewPassword { get; init; }
+    public required string CurrentPassword { get; init; }
+    public required string NewPassword { get; init; }
 }
