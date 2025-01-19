@@ -1,3 +1,4 @@
+using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
 
 namespace JoyGame.CaseStudy.Application.DTOs;
@@ -15,6 +16,24 @@ public record ProductDto
     public EntityStatus Status { get; init; }
     public ProductStatus BusinessStatus { get; init; }
     public int StockQuantity { get; init; }
+
+    public static async Task<ProductDto> MapToProductDtoAsync(Product product, Category category)
+    {
+        return new ProductDto
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Description = product.Description,
+            Slug = product.Slug,
+            Price = product.Price,
+            ImageUrl = product.ImageUrl,
+            CategoryId = product.CategoryId,
+            CategoryName = category?.Name ?? "Unknown Category",
+            Status = product.Status,
+            BusinessStatus = product.BusinessStatus,
+            StockQuantity = product.StockQuantity
+        };
+    }
 }
 
 public record CreateProductDto

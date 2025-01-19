@@ -14,5 +14,5 @@ public class Product : BaseEntity
     public int StockQuantity { get; set; }
     public ProductStatus BusinessStatus { get; set; } = ProductStatus.Draft;
 
-    public required virtual Category Category { get; set; }
+    public virtual Category Category { get; set; }
 }

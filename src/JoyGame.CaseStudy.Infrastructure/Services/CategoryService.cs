@@ -165,7 +165,6 @@ public class CategoryService(
 
     private static string GenerateSlug(string name)
     {
-        // Convert spaces to dashes and remove special characters
         return name.ToLower()
             .Replace(" ", "-")
             .Replace("_", "-")
