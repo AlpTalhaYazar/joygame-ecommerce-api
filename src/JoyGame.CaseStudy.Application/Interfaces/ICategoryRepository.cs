@@ -1,3 +1,4 @@
+using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Domain.Entities;
 
 namespace JoyGame.CaseStudy.Application.Interfaces;
@@ -9,4 +10,5 @@ public interface ICategoryRepository : IBaseRepository<Category>
     Task<List<Category>> GetChildrenAsync(int parentId);
     Task<bool> HasChildrenAsync(int categoryId);
     Task<bool> HasProductsAsync(int categoryId);
+    Task<List<CategoryHierarchyDto>> GetCategoryHierarchyAsync();
 }
