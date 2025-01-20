@@ -186,9 +186,9 @@ public class ProductService(
         }).Select(t => t.Result).ToList();
     }
 
-    public async Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1, int pageSize = 10)
+    public async Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1, int pageSize = 10, int? categoryId = null)
     {
-        var productsDataAndTotal = await _productRepository.GetProductsWithCategoriesAsync(pageNumber, pageSize);
+        var productsDataAndTotal = await _productRepository.GetProductsWithCategoriesAsync(pageNumber, pageSize, categoryId);
 
         return productsDataAndTotal;
     }

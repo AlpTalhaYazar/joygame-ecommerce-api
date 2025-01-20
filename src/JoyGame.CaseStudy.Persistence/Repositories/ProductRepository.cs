@@ -1,3 +1,4 @@
+using System.Data;
 using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Interfaces;
 using JoyGame.CaseStudy.Domain.Entities;
@@ -91,16 +92,52 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
         return result;
     }
 
+    // Burada categoryId ile recursive olarak tüm child kategorileri
+    // de arayıp döndüren bir yapı var
     public async Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1,
-        int pageSize = 10)
+        int pageSize = 10, int? categoryId = null)
     {
-        var sql = "EXEC GetProductsWithCategories @PageNumber, @PageSize";
-        var pageNumberParam = new SqlParameter("@PageNumber", pageNumber);
-        var pageSizeParam = new SqlParameter("@PageSize", pageSize);
+        var parameters = new[]
+        {
+            new SqlParameter("@PageNumber", pageNumber),
+            new SqlParameter("@PageSize", pageSize),
+            new SqlParameter("@CategoryId", (object)categoryId ?? DBNull.Value)
+        };
 
-        return (await _context.Set<ProductWithCategoryDto>()
-                .FromSqlRaw(sql, pageNumberParam, pageSizeParam)
-                .ToListAsync(),
-            await _context.Products.CountAsync());
+        using var command = _context.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "GetProductsWithCategories";
+        command.CommandType = CommandType.StoredProcedure;
+        command.Parameters.AddRange(parameters);
+
+        await _context.Database.OpenConnectionAsync();
+
+        using var result = await command.ExecuteReaderAsync();
+
+        // İlk command ile toplam sayıyı alıyoruz
+        await result.ReadAsync();
+        var totalCount = result.GetInt32(0);
+
+        // İkinci commanda geçiyoruz
+        await result.NextResultAsync();
+
+        var products = new List<ProductWithCategoryDto>();
+        while (await result.ReadAsync())
+        {
+            products.Add(new ProductWithCategoryDto
+            {
+                ProductId = result.GetInt32(result.GetOrdinal("ProductId")),
+                ProductName = result.GetString(result.GetOrdinal("ProductName")),
+                ProductDescription = result.GetString(result.GetOrdinal("ProductDescription")),
+                Price = result.GetDecimal(result.GetOrdinal("Price")),
+                StockQuantity = result.GetInt32(result.GetOrdinal("StockQuantity")),
+                BusinessStatus =
+                    (ProductStatus)result.GetInt32(result.GetOrdinal("BusinessStatus")), // Changed this line
+                CategoryId = result.GetInt32(result.GetOrdinal("CategoryId")),
+                CategoryName = result.GetString(result.GetOrdinal("CategoryName")),
+                CategoryDescription = result.GetString(result.GetOrdinal("CategoryDescription"))
+            });
+        }
+
+        return (products, totalCount);
     }
 }
