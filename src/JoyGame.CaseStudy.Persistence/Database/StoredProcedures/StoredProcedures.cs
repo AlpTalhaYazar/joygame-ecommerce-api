@@ -3,77 +3,72 @@ namespace JoyGame.CaseStudy.Persistence.Database.StoredProcedures;
 public static class StoredProcedures
 {
     public const string GetProductsWithCategories = @"
-        CREATE OR ALTER PROCEDURE [dbo].[GetProductsWithCategories]
-            @CategoryId INT = NULL
-        AS
-        BEGIN
-            WITH RecursiveCategories AS (
-                -- Anchor member: Get the initial category
-                SELECT Id, ParentId, Name
-                FROM Categories
-                WHERE (@CategoryId IS NULL OR Id = @CategoryId)
-                AND Status != 3 -- Not Deleted
+            IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GetProductsWithCategories')
+                DROP PROCEDURE GetProductsWithCategories
+            GO
 
-                UNION ALL
+            CREATE PROCEDURE GetProductsWithCategories
+            AS
+            BEGIN
+                SELECT 
+                    p.Id AS ProductId,
+                    p.Name AS ProductName,
+                    p.Description AS ProductDescription,
+                    p.Price,
+                    p.StockQuantity,
+                    p.BusinessStatus,
+                    c.Id AS CategoryId,
+                    c.Name AS CategoryName,
+                    c.Description AS CategoryDescription
+                FROM Products p
+                INNER JOIN Categories c ON p.CategoryId = c.Id
+                WHERE p.Status = 1 -- Active status
+                ORDER BY c.Name, p.Name
+            END";
 
-                -- Recursive member: Get all child categories
-                SELECT c.Id, c.ParentId, c.Name
-                FROM Categories c
-                INNER JOIN RecursiveCategories rc ON c.ParentId = rc.Id
-                WHERE c.Status != 3 -- Not Deleted
-            )
-            SELECT 
-                p.Id,
-                p.Name,
-                p.Description,
-                p.Price,
-                p.StockQuantity,
-                p.BusinessStatus,
-                c.Id AS CategoryId,
-                c.Name AS CategoryName
-            FROM Products p
-            INNER JOIN Categories c ON p.CategoryId = c.Id
-            WHERE c.Id IN (SELECT Id FROM RecursiveCategories)
-            AND p.Status != 3 -- Not Deleted
-            ORDER BY c.Name, p.Name;
-        END";
+    public const string GetRecursiveCategories = @"
+            IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GetRecursiveCategories')
+                DROP PROCEDURE GetRecursiveCategories
+            GO
 
-    public const string GetCategoryHierarchy = @"
-        CREATE OR ALTER PROCEDURE [dbo].[GetCategoryHierarchy]
-        AS
-        BEGIN
-            WITH RecursiveCategories AS (
-                -- Anchor member: Start with root categories (no parent)
+            CREATE PROCEDURE GetRecursiveCategories
+            AS
+            BEGIN
+                WITH RecursiveCTE AS (
+                    -- Anchor member
+                    SELECT 
+                        c.Id,
+                        c.Name,
+                        c.Description,
+                        c.ParentId,
+                        CAST(c.Name AS NVARCHAR(500)) as Hierarchy,
+                        0 as Level
+                    FROM Categories c
+                    WHERE c.ParentId IS NULL
+                    AND c.Status = 1 -- Active status
+
+                    UNION ALL
+
+                    -- Recursive member
+                    SELECT 
+                        c.Id,
+                        c.Name,
+                        c.Description,
+                        c.ParentId,
+                        CAST(rc.Hierarchy + ' > ' + c.Name AS NVARCHAR(500)),
+                        rc.Level + 1
+                    FROM Categories c
+                    INNER JOIN RecursiveCTE rc ON c.ParentId = rc.Id
+                    WHERE c.Status = 1 -- Active status
+                )
                 SELECT 
                     Id,
-                    ParentId,
                     Name,
-                    0 AS Level,
-                    CAST(Name AS NVARCHAR(MAX)) AS Path
-                FROM Categories
-                WHERE ParentId IS NULL
-                AND Status != 3 -- Not Deleted
-
-                UNION ALL
-
-                -- Recursive member: Get all child categories
-                SELECT 
-                    c.Id,
-                    c.ParentId,
-                    c.Name,
-                    rc.Level + 1,
-                    CAST(rc.Path + ' > ' + c.Name AS NVARCHAR(MAX))
-                FROM Categories c
-                INNER JOIN RecursiveCategories rc ON c.ParentId = rc.Id
-                WHERE c.Status != 3 -- Not Deleted
-            )
-            SELECT 
-                Id,
-                ParentId,
-                Name,
-                Level,
-                Path
-            FROM RecursiveCategories
-            ORDER BY Path;
-        END";
+                    Description,
+                    ParentId,
+                    Hierarchy,
+                    Level
+                FROM RecursiveCTE
+                ORDER BY Hierarchy
+            END";
 }

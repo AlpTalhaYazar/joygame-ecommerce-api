@@ -91,14 +91,10 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
         return result;
     }
 
-    public async Task<List<ProductWithCategoryDto>> GetProductsWithCategoriesAsync(int? categoryId = null)
+    public async Task<List<ProductWithCategoryDto>> GetProductsWithCategoriesAsync()
     {
-        var categoryIdParameter = new SqlParameter("@CategoryId",
-            (object)categoryId ?? DBNull.Value);
-
         return await _context.Set<ProductWithCategoryDto>()
-            .FromSqlRaw("EXEC GetProductsWithCategories @CategoryId",
-                categoryIdParameter)
+            .FromSqlRaw("EXEC GetProductsWithCategories")
             .ToListAsync();
     }
 }

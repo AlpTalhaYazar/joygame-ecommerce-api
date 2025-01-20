@@ -50,7 +50,7 @@ public class CategoryRepository(ApplicationDbContext context) : BaseRepository<C
     public async Task<List<CategoryHierarchyDto>> GetCategoryHierarchyAsync()
     {
         return await _context.Set<CategoryHierarchyDto>()
-            .FromSqlRaw("EXEC GetCategoryHierarchy")
+            .FromSqlRaw("EXEC GetRecursiveCategories")
             .ToListAsync();
     }
 

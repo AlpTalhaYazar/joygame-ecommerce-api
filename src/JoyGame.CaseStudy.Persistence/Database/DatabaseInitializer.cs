@@ -52,14 +52,11 @@ public class DatabaseInitializer(
         try
         {
             await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetProductsWithCategories);
-            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetCategoryHierarchy);
-
-            logger.LogInformation("Stored procedures created/updated successfully");
+            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetRecursiveCategories);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An error occurred while creating stored procedures");
-            throw;
+            throw new Exception("Failed to create stored procedures", ex);
         }
     }
 }
