@@ -45,6 +45,7 @@ public static class StoredProcedures
                         c.Id,
                         c.Name,
                         c.Description,
+                        c.Slug,
                         c.ParentId,
                         CAST(c.Name AS NVARCHAR(500)) as Hierarchy,
                         0 as Level
@@ -59,6 +60,7 @@ public static class StoredProcedures
                         c.Id,
                         c.Name,
                         c.Description,
+                        c.Slug,
                         c.ParentId,
                         CAST(rc.Hierarchy + ' > ' + c.Name AS NVARCHAR(500)),
                         rc.Level + 1
@@ -70,6 +72,7 @@ public static class StoredProcedures
                     Id,
                     Name,
                     Description,
+                    Slug,
                     ParentId,
                     Hierarchy,
                     Level
