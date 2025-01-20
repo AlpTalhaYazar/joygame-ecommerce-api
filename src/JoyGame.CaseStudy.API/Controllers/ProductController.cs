@@ -141,9 +141,12 @@ public class ProductController(
     [HttpGet("with-categories")]
     [Authorize(Policy = "ProductView")]
     [ProducesResponseType(typeof(Result<List<ProductWithCategoryDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetProductsWithCategories()
+    public async Task<IActionResult> GetProductsWithCategories([FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
-        var products = await _productService.GetProductsWithCategoriesAsync();
-        return HandleResult(Result<List<ProductWithCategoryDto>>.Success(products));
+        var productsDataAndTotal = await _productService.GetProductsWithCategoriesAsync(page, pageSize);
+        return HandleResult(PaginationResult<List<ProductWithCategoryDto>>.Success(productsDataAndTotal.data,
+            page, pageSize,
+            productsDataAndTotal.total));
     }
 }

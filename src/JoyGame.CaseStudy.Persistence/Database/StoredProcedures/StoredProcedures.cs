@@ -5,28 +5,34 @@ public static class StoredProcedures
     public static class GetProductsWithCategories
     {
         public const string Drop = @"
-            IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GetProductsWithCategories')
-                DROP PROCEDURE GetProductsWithCategories";
+        IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GetProductsWithCategories')
+            DROP PROCEDURE GetProductsWithCategories";
 
         public const string Create = @"
-            CREATE PROCEDURE GetProductsWithCategories
-            AS
-            BEGIN
-                SELECT 
-                    p.Id AS ProductId,
-                    p.Name AS ProductName,
-                    p.Description AS ProductDescription,
-                    p.Price,
-                    p.StockQuantity,
-                    p.BusinessStatus,
-                    c.Id AS CategoryId,
-                    c.Name AS CategoryName,
-                    c.Description AS CategoryDescription
-                FROM Products p
-                INNER JOIN Categories c ON p.CategoryId = c.Id
-                WHERE p.Status = 1 -- Active status
-                ORDER BY c.Name, p.Name
-            END";
+        CREATE PROCEDURE GetProductsWithCategories
+            @PageNumber INT = 1,
+            @PageSize INT = 10
+        AS
+        BEGIN
+            SET NOCOUNT ON;
+
+            SELECT 
+                p.Id AS ProductId,
+                p.Name AS ProductName,
+                p.Description AS ProductDescription,
+                p.Price,
+                p.StockQuantity,
+                p.BusinessStatus,
+                c.Id AS CategoryId,
+                c.Name AS CategoryName,
+                c.Description AS CategoryDescription
+            FROM Products p
+            INNER JOIN Categories c ON p.CategoryId = c.Id
+            WHERE p.Status = 1 -- Active status
+            ORDER BY c.Name, p.Name
+            OFFSET (@PageNumber - 1) * @PageSize ROWS
+            FETCH NEXT @PageSize ROWS ONLY;
+        END";
     }
 
     public static class GetRecursiveCategories

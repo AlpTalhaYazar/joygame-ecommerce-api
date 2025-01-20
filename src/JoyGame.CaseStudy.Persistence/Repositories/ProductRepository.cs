@@ -91,10 +91,16 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
         return result;
     }
 
-    public async Task<List<ProductWithCategoryDto>> GetProductsWithCategoriesAsync()
+    public async Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1,
+        int pageSize = 10)
     {
-        return await _context.Set<ProductWithCategoryDto>()
-            .FromSqlRaw("EXEC GetProductsWithCategories")
-            .ToListAsync();
+        var sql = "EXEC GetProductsWithCategories @PageNumber, @PageSize";
+        var pageNumberParam = new SqlParameter("@PageNumber", pageNumber);
+        var pageSizeParam = new SqlParameter("@PageSize", pageSize);
+
+        return (await _context.Set<ProductWithCategoryDto>()
+                .FromSqlRaw(sql, pageNumberParam, pageSizeParam)
+                .ToListAsync(),
+            await _context.Products.CountAsync());
     }
 }

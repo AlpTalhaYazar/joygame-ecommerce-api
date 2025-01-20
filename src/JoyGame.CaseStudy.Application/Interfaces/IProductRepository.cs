@@ -9,5 +9,5 @@ public interface IProductRepository : IBaseRepository<Product>
     Task<List<Product>> GetByCategoryIdAsync(int categoryId);
     Task<List<Product>> GetActiveByCategoryIdAsync(int categoryId);
     Task<List<Product>> SearchProductsAsync(string searchTerm, int? categoryId = null);
-    Task<List<ProductWithCategoryDto>> GetProductsWithCategoriesAsync();
+    Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1, int pageSize = 10);
 }
