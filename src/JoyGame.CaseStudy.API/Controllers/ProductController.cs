@@ -142,9 +142,9 @@ public class ProductController(
     [Authorize(Policy = "ProductView")]
     [ProducesResponseType(typeof(Result<List<ProductWithCategoryDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetProductsWithCategories([FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10, [FromQuery] int? categoryId = null)
+        [FromQuery] int pageSize = 10, [FromQuery] int? categoryId = null, [FromQuery] string? searchText = null)
     {
-        var productsDataAndTotal = await _productService.GetProductsWithCategoriesAsync(page, pageSize, categoryId);
+        var productsDataAndTotal = await _productService.GetProductsWithCategoriesAsync(page, pageSize, categoryId, searchText);
         return HandleResult(PaginationResult<List<ProductWithCategoryDto>>.Success(productsDataAndTotal.data,
             page, pageSize,
             productsDataAndTotal.total));

@@ -95,13 +95,14 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
     // Burada categoryId ile recursive olarak tüm child kategorileri
     // de arayıp döndüren bir yapı var
     public async Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1,
-        int pageSize = 10, int? categoryId = null)
+        int pageSize = 10, int? categoryId = null, string? searchText = null)
     {
         var parameters = new[]
         {
             new SqlParameter("@PageNumber", pageNumber),
             new SqlParameter("@PageSize", pageSize),
-            new SqlParameter("@CategoryId", (object)categoryId ?? DBNull.Value)
+            new SqlParameter("@CategoryId", (object)categoryId ?? DBNull.Value),
+            new SqlParameter("@SearchText", (object)searchText ?? DBNull.Value)
         };
 
         using var command = _context.Database.GetDbConnection().CreateCommand();
