@@ -24,4 +24,8 @@
     <ProjectReference Include="..\JoyGame.CaseStudy.Persistence\JoyGame.CaseStudy.Persistence.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="wwwroot\.DS_Store" />
+  </ItemGroup>
+
 </Project>

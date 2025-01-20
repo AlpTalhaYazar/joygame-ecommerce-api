@@ -1,12 +1,9 @@
-using System.Text;
 using JoyGame.CaseStudy.API.Middleware;
 using JoyGame.CaseStudy.API.Security;
 using JoyGame.CaseStudy.Infrastructure;
 using JoyGame.CaseStudy.Persistence;
-using JoyGame.CaseStudy.Persistence.Context;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,11 +27,17 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("CategoryView", policy =>
+        policy.Requirements.Add(new PermissionRequirement("category_view")));
     options.AddPolicy("CategoryManagement", policy =>
         policy.Requirements.Add(new PermissionRequirement("category_manage")));
+    options.AddPolicy("ProductView", policy =>
+        policy.Requirements.Add(new PermissionRequirement("product_view")));
     options.AddPolicy("ProductManagement", policy =>
         policy.Requirements.Add(new PermissionRequirement("product_manage")));
 });
+
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -63,6 +66,7 @@ else
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAngular");
@@ -73,8 +77,8 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
-   .WithName("HealthCheck")
-   .WithOpenApi();
+    .WithName("HealthCheck")
+    .WithOpenApi();
 
 using (var scope = app.Services.CreateScope())
 {
