@@ -127,9 +127,11 @@ public class AuthService(
 
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Email, user.Email)
+            new("id", user.Id.ToString()),
+            new("username", user.Username),
+            new(ClaimTypes.Email, user.Email),
+            new("firstName", user.FirstName),
+            new("lastName", user.LastName),
         };
 
         claims.AddRange(permissions.Select(p => new Claim("permission", p)));

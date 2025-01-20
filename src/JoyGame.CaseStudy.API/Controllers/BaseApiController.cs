@@ -10,7 +10,7 @@ public class BaseApiController : ControllerBase
     protected IActionResult HandleResult<T>(Result<T> result)
     {
         if (!result.IsSuccess && result.Data == null)
-            return NotFound();
+            return NotFound(result);
 
         if (result.IsSuccess)
             return Ok(result);
