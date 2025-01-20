@@ -10,4 +10,5 @@ public interface ICategoryService
     Task<CategoryDto> CreateAsync(CreateCategoryDto createCategoryDto);
     Task<CategoryDto> UpdateAsync(int id, UpdateCategoryDto updateCategoryDto);
     Task<bool> DeleteAsync(int id);
+    Task<List<CategoryHierarchyDto>> GetCategoryHierarchyAsync();
 }

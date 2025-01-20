@@ -107,4 +107,12 @@ public class CategoryController(
             return HandleResult(Result<object>.Failure(ex.Message));
         }
     }
+
+    [HttpGet("hierarchy")]
+    [Authorize(Policy = "CategoryView")]
+    public async Task<IActionResult> GetHierarchy()
+    {
+        var hierarchy = await _categoryService.GetCategoryHierarchyAsync();
+        return HandleResult(Result<List<CategoryHierarchyDto>>.Success(hierarchy));
+    }
 }

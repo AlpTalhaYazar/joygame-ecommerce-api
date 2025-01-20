@@ -124,6 +124,13 @@ public class CategoryService(
         return result;
     }
 
+    public async Task<List<CategoryHierarchyDto>> GetCategoryHierarchyAsync()
+    {
+        var categories = await _categoryRepository.GetCategoryHierarchyAsync();
+
+        return categories;
+    }
+
     private static List<CategoryTreeDto> BuildCategoryTree(List<Category> categories, int? parentId = null)
     {
         return categories
