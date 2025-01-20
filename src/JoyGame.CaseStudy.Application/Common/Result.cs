@@ -2,9 +2,9 @@ namespace JoyGame.CaseStudy.Application.Common;
 
 public class Result<T>
 {
-    public bool IsSuccess { get; private set; }
-    public T? Data { get; private set; }
-    public ResultError Error { get; private set; } = new ResultError();
+    public bool IsSuccess { get; protected internal set; }
+    public T? Data { get; protected internal set; }
+    public ResultError Error { get; protected internal set; } = new ResultError();
 
     public class ResultError
     {
