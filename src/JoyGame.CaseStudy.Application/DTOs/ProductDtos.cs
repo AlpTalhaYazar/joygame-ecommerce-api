@@ -65,3 +65,24 @@ public record ProductSearchDto
     public decimal? MaxPrice { get; init; }
     public ProductStatus? Status { get; init; }
 }
+
+public record ProductWithCategoryDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string? Description { get; set; }
+    public decimal Price { get; set; }
+    public int StockQuantity { get; set; }
+    public ProductStatus BusinessStatus { get; set; }
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; }
+
+    public string BusinessStatusDisplay => BusinessStatus switch
+    {
+        ProductStatus.Draft => "Draft",
+        ProductStatus.Available => "Available",
+        ProductStatus.OutOfStock => "Out of Stock",
+        ProductStatus.Discontinued => "Discontinued",
+        _ => "Unknown"
+    };
+}
