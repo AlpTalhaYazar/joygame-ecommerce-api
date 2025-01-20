@@ -137,4 +137,13 @@ public class ProductController(
             return HandleResult(Result<object>.Failure(ex.Message));
         }
     }
+
+    [HttpGet("with-categories")]
+    [Authorize(Policy = "ProductView")]
+    [ProducesResponseType(typeof(Result<List<ProductWithCategoryDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProductsWithCategories()
+    {
+        var products = await _productService.GetProductsWithCategoriesAsync();
+        return HandleResult(Result<List<ProductWithCategoryDto>>.Success(products));
+    }
 }

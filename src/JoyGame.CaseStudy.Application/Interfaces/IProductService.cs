@@ -12,4 +12,5 @@ public interface IProductService
     Task<ProductDto> UpdateAsync(int id, UpdateProductDto updateProductDto);
     Task<bool> DeleteAsync(int id);
     Task<List<ProductDto>> SearchAsync(string searchTerm, int? categoryId = null);
+    Task<List<ProductWithCategoryDto>> GetProductsWithCategoriesAsync();
 }

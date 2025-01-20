@@ -186,6 +186,13 @@ public class ProductService(
         }).Select(t => t.Result).ToList();
     }
 
+    public async Task<List<ProductWithCategoryDto>> GetProductsWithCategoriesAsync()
+    {
+        var products = await _productRepository.GetProductsWithCategoriesAsync();
+
+        return products;
+    }
+
     private async Task UpdateStockAndStatus(Product product, int newStockQuantity, ProductStatus newStatus)
     {
         var oldStockQuantity = product.StockQuantity;
