@@ -51,8 +51,13 @@ public class DatabaseInitializer(
     {
         try
         {
-            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetProductsWithCategories);
-            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetRecursiveCategories);
+            // Drop existing procedures
+            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetProductsWithCategories.Drop);
+            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetRecursiveCategories.Drop);
+
+            // Create new procedures
+            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetProductsWithCategories.Create);
+            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetRecursiveCategories.Create);
         }
         catch (Exception ex)
         {

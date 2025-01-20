@@ -2,11 +2,13 @@ namespace JoyGame.CaseStudy.Persistence.Database.StoredProcedures;
 
 public static class StoredProcedures
 {
-    public const string GetProductsWithCategories = @"
+    public static class GetProductsWithCategories
+    {
+        public const string Drop = @"
             IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GetProductsWithCategories')
-                DROP PROCEDURE GetProductsWithCategories
-            GO
+                DROP PROCEDURE GetProductsWithCategories";
 
+        public const string Create = @"
             CREATE PROCEDURE GetProductsWithCategories
             AS
             BEGIN
@@ -25,12 +27,15 @@ public static class StoredProcedures
                 WHERE p.Status = 1 -- Active status
                 ORDER BY c.Name, p.Name
             END";
+    }
 
-    public const string GetRecursiveCategories = @"
+    public static class GetRecursiveCategories
+    {
+        public const string Drop = @"
             IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GetRecursiveCategories')
-                DROP PROCEDURE GetRecursiveCategories
-            GO
+                DROP PROCEDURE GetRecursiveCategories";
 
+        public const string Create = @"
             CREATE PROCEDURE GetRecursiveCategories
             AS
             BEGIN
@@ -71,4 +76,5 @@ public static class StoredProcedures
                 FROM RecursiveCTE
                 ORDER BY Hierarchy
             END";
+    }
 }
