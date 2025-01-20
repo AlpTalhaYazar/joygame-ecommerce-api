@@ -1,3 +1,4 @@
+using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Domain.Common;
 using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
@@ -20,6 +21,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+        modelBuilder.Entity<ProductWithCategoryDto>().HasNoKey().ToView(null);
+
+        modelBuilder.Entity<CategoryHierarchyDto>().HasNoKey().ToView(null);
 
         modelBuilder.Entity<User>().HasQueryFilter(x => x.Status != EntityStatus.Deleted);
         modelBuilder.Entity<Category>().HasQueryFilter(x => x.Status != EntityStatus.Deleted);

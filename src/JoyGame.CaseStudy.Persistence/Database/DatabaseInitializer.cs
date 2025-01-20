@@ -31,6 +31,8 @@ public class DatabaseInitializer(
             await context.Database.EnsureCreatedAsync();
 
             logger.LogInformation("Database initialization completed successfully");
+
+            await CreateStoredProceduresAsync();
         }
         catch (Exception ex)
         {
@@ -42,6 +44,22 @@ public class DatabaseInitializer(
             }
 
             throw new ApplicationException("Failed to initialize the database. Please check the logs for more details.");
+        }
+    }
+
+    private async Task CreateStoredProceduresAsync()
+    {
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetProductsWithCategories);
+            await context.Database.ExecuteSqlRawAsync(StoredProcedures.StoredProcedures.GetCategoryHierarchy);
+
+            logger.LogInformation("Stored procedures created/updated successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "An error occurred while creating stored procedures");
+            throw;
         }
     }
 }
