@@ -1,7 +1,9 @@
+using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Interfaces;
 using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
 using JoyGame.CaseStudy.Persistence.Context;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace JoyGame.CaseStudy.Persistence.Repositories;
@@ -87,5 +89,16 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
 
         AddChildrenIds(categoryId);
         return result;
+    }
+
+    public async Task<List<ProductWithCategoryDto>> GetProductsWithCategoriesAsync(int? categoryId = null)
+    {
+        var categoryIdParameter = new SqlParameter("@CategoryId",
+            (object)categoryId ?? DBNull.Value);
+
+        return await _context.Set<ProductWithCategoryDto>()
+            .FromSqlRaw("EXEC GetProductsWithCategories @CategoryId",
+                categoryIdParameter)
+            .ToListAsync();
     }
 }

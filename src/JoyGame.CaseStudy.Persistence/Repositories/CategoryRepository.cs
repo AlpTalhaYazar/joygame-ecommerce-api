@@ -1,3 +1,4 @@
+using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Exceptions;
 using JoyGame.CaseStudy.Application.Interfaces;
 using JoyGame.CaseStudy.Domain.Entities;
@@ -14,7 +15,7 @@ public class CategoryRepository(ApplicationDbContext context) : BaseRepository<C
     {
         var categories = await _context.Categories
             .Include(c => c.Children)
-            .Where(c => c.ParentId == 0)
+            .Where(c => c.ParentId == null)
             .ToListAsync();
 
         return categories;
@@ -44,6 +45,13 @@ public class CategoryRepository(ApplicationDbContext context) : BaseRepository<C
     {
         return await _context.Products
             .AnyAsync(p => p.CategoryId == categoryId);
+    }
+
+    public async Task<List<CategoryHierarchyDto>> GetCategoryHierarchyAsync()
+    {
+        return await _context.Set<CategoryHierarchyDto>()
+            .FromSqlRaw("EXEC GetCategoryHierarchy")
+            .ToListAsync();
     }
 
     public override async Task<bool> DeleteAsync(int id)
