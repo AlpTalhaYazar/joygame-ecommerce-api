@@ -41,16 +41,31 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
         return OperationResult<ProductWithCategoryDto>.Success(product);
     }
 
-    public async Task<OperationResult<Product?>> GetBySlugAsync(string slug)
+    public async Task<OperationResult<ProductWithCategoryDto>> GetBySlugAsync(string slug)
     {
         var product = await _context.Products
             .Include(p => p.Category)
-            .FirstOrDefaultAsync(p => p.Slug == slug);
+            .Where(p => p.Slug == slug)
+            .Select(p => new ProductWithCategoryDto
+            {
+                ProductId = p.Id,
+                ProductName = p.Name,
+                ProductDescription = p.Description,
+                ProductSlug = p.Slug,
+                Price = p.Price,
+                StockQuantity = p.StockQuantity,
+                BusinessStatus = p.BusinessStatus,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                CategoryDescription = p.Category.Description,
+                CategorySlug = p.Category.Slug
+            })
+            .FirstOrDefaultAsync();
 
         if (product == null)
-            return OperationResult<Product?>.Failure(ErrorCode.ProductNotFound, "Product not found");
+            return OperationResult<ProductWithCategoryDto>.Failure(ErrorCode.ProductNotFound, "Product not found");
 
-        return OperationResult<Product?>.Success(product);
+        return OperationResult<ProductWithCategoryDto>.Success(product);
     }
 
     public async Task<OperationResult<List<Product>>> GetByCategoryIdAsync(int categoryId)

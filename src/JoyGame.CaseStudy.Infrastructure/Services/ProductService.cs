@@ -51,29 +51,17 @@ public class ProductService(
         return OperationResult<ProductDto?>.Success(product);
     }
 
-    public async Task<OperationResult<ProductDto?>> GetBySlugAsync(string slug)
+    public async Task<OperationResult<ProductWithCategoryDto>> GetBySlugAsync(string slug)
     {
         var productOperationResult = await _productRepository.GetBySlugAsync(slug);
         if (productOperationResult.IsSuccess == false)
         {
             _logger.LogWarning("Attempted to get product by non-existent slug: {Slug}", slug);
-            return OperationResult<ProductDto?>.Failure(productOperationResult.ErrorCode,
+            return OperationResult<ProductWithCategoryDto>.Failure(productOperationResult.ErrorCode,
                 productOperationResult.ErrorMessage);
         }
 
-        var categoryOperationResult = await _categoryRepository.GetByIdAsync(productOperationResult.Data.CategoryId);
-
-        if (categoryOperationResult.IsSuccess == false)
-        {
-            _logger.LogWarning("Product retrieved with non-existent category ID: {CategoryId}",
-                productOperationResult.Data.CategoryId);
-            return OperationResult<ProductDto?>.Failure(categoryOperationResult.ErrorCode,
-                categoryOperationResult.ErrorMessage);
-        }
-
-        var product = await ProductDto.MapToProductDtoAsync(productOperationResult.Data, categoryOperationResult.Data);
-
-        return OperationResult<ProductDto?>.Success(product);
+        return productOperationResult;
     }
 
     public async Task<OperationResult<List<ProductDto>>> GetAllAsync()

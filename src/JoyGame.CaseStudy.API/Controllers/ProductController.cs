@@ -46,10 +46,10 @@ public class ProductController(
         return HandleResult(productOperationResult.ToApiResponse());
     }
 
-    [HttpGet("by-slug/{slug}")]
+    [HttpGet("{slug}")]
     [Authorize]
-    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<ProductWithCategoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ProductWithCategoryDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetBySlug(string slug)
     {
         var productOperationResult = await _productService.GetBySlugAsync(slug);

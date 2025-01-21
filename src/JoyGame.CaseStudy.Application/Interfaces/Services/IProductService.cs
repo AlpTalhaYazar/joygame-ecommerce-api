@@ -7,7 +7,7 @@ public interface IProductService
 {
     Task<OperationResult<ProductWithCategoryDto>> GetByIdDetailedAsync(int id);
     Task<OperationResult<ProductDto?>> GetByIdAsync(int id);
-    Task<OperationResult<ProductDto?>> GetBySlugAsync(string slug);
+    Task<OperationResult<ProductWithCategoryDto>> GetBySlugAsync(string slug);
     Task<OperationResult<List<ProductDto>>> GetAllAsync();
     Task<OperationResult<List<ProductDto>>> GetByCategoryIdAsync(int categoryId);
     Task<OperationResult<ProductDto>> CreateAsync(CreateProductDto createProductDto);
