@@ -10,110 +10,114 @@ public static class StoredProcedures
 
         public const string Create = @"
             CREATE PROCEDURE GetProductsWithCategories
-    @PageNumber INT = 1,
-    @PageSize INT = 10,
-    @CategoryId INT = NULL,
-    @SearchText NVARCHAR(100) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Get total count
-    WITH CategoryHierarchy AS (
-        SELECT 
-            Id,
-            ParentId
-        FROM Categories
-        WHERE (@CategoryId IS NULL) OR (Id = @CategoryId)
-        
-        UNION ALL
-        
-        SELECT 
-            c.Id,
-            c.ParentId
-        FROM Categories c
-        INNER JOIN CategoryHierarchy ch ON c.ParentId = ch.Id
-    )
-    SELECT COUNT(*) AS TotalCount
-    FROM Products p
-    INNER JOIN Categories c ON p.CategoryId = c.Id
-    WHERE p.Status = 1
-    AND (
-        @CategoryId IS NULL 
-        OR 
-        EXISTS (
-            SELECT 1 
-            FROM CategoryHierarchy ch 
-            WHERE c.Id = ch.Id
-        )
-    )
-    AND (
-        @SearchText IS NULL
-        OR (
-            p.Name LIKE '%' + @SearchText + '%'
-            OR p.Description LIKE '%' + @SearchText + '%'
-            OR c.Name LIKE '%' + @SearchText + '%'
-            OR c.Description LIKE '%' + @SearchText + '%'
-        )
-    );
-    
-    -- Get paged results
-    WITH CategoryHierarchy AS (
-        SELECT 
-            Id,
-            ParentId,
-            Name,
-            Description,
-            1 AS Level
-        FROM Categories
-        WHERE (@CategoryId IS NULL) OR (Id = @CategoryId)
-        
-        UNION ALL
-        
-        SELECT 
-            c.Id,
-            c.ParentId,
-            c.Name,
-            c.Description,
-            ch.Level + 1
-        FROM Categories c
-        INNER JOIN CategoryHierarchy ch ON c.ParentId = ch.Id
-    )
-    SELECT 
-        p.Id AS ProductId,
-        p.Name AS ProductName,
-        p.Description AS ProductDescription,
-        p.Price,
-        p.StockQuantity,
-        CAST(p.BusinessStatus AS INT) AS BusinessStatus,
-        c.Id AS CategoryId,
-        c.Name AS CategoryName,
-        c.Description AS CategoryDescription
-    FROM Products p
-    INNER JOIN Categories c ON p.CategoryId = c.Id
-    WHERE p.Status = 1
-    AND (
-        @CategoryId IS NULL 
-        OR 
-        EXISTS (
-            SELECT 1 
-            FROM CategoryHierarchy ch 
-            WHERE c.Id = ch.Id
-        )
-    )
-    AND (
-        @SearchText IS NULL
-        OR (
-            p.Name LIKE '%' + @SearchText + '%'
-            OR p.Description LIKE '%' + @SearchText + '%'
-            OR c.Name LIKE '%' + @SearchText + '%'
-            OR c.Description LIKE '%' + @SearchText + '%'
-        )
-    )
-    ORDER BY c.Name, p.Name
-    OFFSET (@PageNumber - 1) * @PageSize ROWS
-    FETCH NEXT @PageSize ROWS ONLY;
-END";
+                @PageNumber INT = 1,
+                @PageSize INT = 10,
+                @CategoryId INT = NULL,
+                @SearchText NVARCHAR(100) = NULL
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+                
+                -- Get total count
+                WITH CategoryHierarchy AS (
+                    SELECT 
+                        Id,
+                        ParentId
+                    FROM Categories
+                    WHERE (@CategoryId IS NULL) OR (Id = @CategoryId)
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        c.Id,
+                        c.ParentId
+                    FROM Categories c
+                    INNER JOIN CategoryHierarchy ch ON c.ParentId = ch.Id
+                )
+                SELECT COUNT(*) AS TotalCount
+                FROM Products p
+                INNER JOIN Categories c ON p.CategoryId = c.Id
+                WHERE p.Status = 1
+                AND (
+                    @CategoryId IS NULL 
+                    OR 
+                    EXISTS (
+                        SELECT 1 
+                        FROM CategoryHierarchy ch 
+                        WHERE c.Id = ch.Id
+                    )
+                )
+                AND (
+                    @SearchText IS NULL
+                    OR (
+                        p.Name LIKE '%' + @SearchText + '%'
+                        OR p.Description LIKE '%' + @SearchText + '%'
+                        OR c.Name LIKE '%' + @SearchText + '%'
+                        OR c.Description LIKE '%' + @SearchText + '%'
+                    )
+                );
+                
+                -- Get paged results
+                WITH CategoryHierarchy AS (
+                    SELECT 
+                        Id,
+                        ParentId,
+                        Name,
+                        Description,
+                        Slug,
+                        1 AS Level
+                    FROM Categories
+                    WHERE (@CategoryId IS NULL) OR (Id = @CategoryId)
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        c.Id,
+                        c.ParentId,
+                        c.Name,
+                        c.Description,
+                        c.Slug,
+                        ch.Level + 1
+                    FROM Categories c
+                    INNER JOIN CategoryHierarchy ch ON c.ParentId = ch.Id
+                )
+                SELECT 
+                    p.Id AS ProductId,
+                    p.Name AS ProductName,
+                    p.Description AS ProductDescription,
+                    p.Slug AS ProductSlug,
+                    p.Price,
+                    p.StockQuantity,
+                    CAST(p.BusinessStatus AS INT) AS BusinessStatus,
+                    c.Id AS CategoryId,
+                    c.Name AS CategoryName,
+                    c.Description AS CategoryDescription,
+                    c.Slug AS CategorySlug
+                FROM Products p
+                INNER JOIN Categories c ON p.CategoryId = c.Id
+                WHERE p.Status = 1
+                AND (
+                    @CategoryId IS NULL 
+                    OR 
+                    EXISTS (
+                        SELECT 1 
+                        FROM CategoryHierarchy ch 
+                        WHERE c.Id = ch.Id
+                    )
+                )
+                AND (
+                    @SearchText IS NULL
+                    OR (
+                        p.Name LIKE '%' + @SearchText + '%'
+                        OR p.Description LIKE '%' + @SearchText + '%'
+                        OR c.Name LIKE '%' + @SearchText + '%'
+                        OR c.Description LIKE '%' + @SearchText + '%'
+                    )
+                )
+                ORDER BY c.Name, p.Name
+                OFFSET (@PageNumber - 1) * @PageSize ROWS
+                FETCH NEXT @PageSize ROWS ONLY;
+            END";
     }
 
     public static class GetRecursiveCategories

@@ -1,5 +1,6 @@
 using JoyGame.CaseStudy.API.Extensions;
 using JoyGame.CaseStudy.API.Models;
+using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -104,6 +105,18 @@ public class ProductController(
     {
         var productsDataAndTotalOperationResult =
             await _productService.GetProductsWithCategoriesAsync(page, pageSize, categoryId, searchText);
-        return HandleResult(productsDataAndTotalOperationResult.ToApiResponse());
+
+        var responseOperationResult =
+            PaginatedOperationResult<List<ProductWithCategoryDto>>.Success(
+                productsDataAndTotalOperationResult.Data.data,
+                new PaginatedOperationResult<List<ProductWithCategoryDto>>.PaginationMetadata()
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = productsDataAndTotalOperationResult.Data.total,
+                    TotalPages = (int)Math.Ceiling(productsDataAndTotalOperationResult.Data.total / (double)pageSize)
+                });
+
+        return HandleResult(responseOperationResult.ToApiResponse());
     }
 }

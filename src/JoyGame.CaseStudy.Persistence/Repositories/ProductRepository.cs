@@ -173,13 +173,15 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
                 ProductId = result.GetInt32(result.GetOrdinal("ProductId")),
                 ProductName = result.GetString(result.GetOrdinal("ProductName")),
                 ProductDescription = result.GetString(result.GetOrdinal("ProductDescription")),
+                ProductSlug = result.GetString(result.GetOrdinal("ProductSlug")),
                 Price = result.GetDecimal(result.GetOrdinal("Price")),
                 StockQuantity = result.GetInt32(result.GetOrdinal("StockQuantity")),
                 BusinessStatus =
-                    (ProductStatus)result.GetInt32(result.GetOrdinal("BusinessStatus")), // Changed this line
+                    (ProductStatus)result.GetInt32(result.GetOrdinal("BusinessStatus")),
                 CategoryId = result.GetInt32(result.GetOrdinal("CategoryId")),
                 CategoryName = result.GetString(result.GetOrdinal("CategoryName")),
-                CategoryDescription = result.GetString(result.GetOrdinal("CategoryDescription"))
+                CategoryDescription = result.GetString(result.GetOrdinal("CategoryDescription")),
+                CategorySlug = result.GetString(result.GetOrdinal("CategorySlug"))
             });
         }
 
