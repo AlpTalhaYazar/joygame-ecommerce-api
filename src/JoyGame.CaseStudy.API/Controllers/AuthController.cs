@@ -27,17 +27,17 @@ public class AuthController(
     }
 
     [HttpPost("forgot-password")]
-    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ForgotPassword([FromBody] string email)
+    [ProducesResponseType(typeof(ApiResponse<ForgotPasswordResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto model)
     {
-        var forgotPasswordOperationResult = await _authService.ForgotPasswordAsync(email);
+        var forgotPasswordOperationResult = await _authService.ForgotPasswordAsync(model.Email);
 
         return HandleResult(forgotPasswordOperationResult.ToApiResponse());
     }
 
     [HttpPost("reset-password")]
-    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
     {
         var resetPasswordOperationResult = await _authService.ResetPasswordAsync(request);

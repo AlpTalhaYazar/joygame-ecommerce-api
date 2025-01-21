@@ -27,8 +27,9 @@ public class UserRepository(ApplicationDbContext context) : BaseRepository<User>
 
     public async Task<OperationResult<User?>> GetByEmailAsync(string email)
     {
+        var emailLower = email.ToLower();
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefaultAsync(u => u.Email == emailLower);
 
         if (user == null)
             return OperationResult<User?>.Failure(ErrorCode.UserNotFound, "User not found");
@@ -38,16 +39,18 @@ public class UserRepository(ApplicationDbContext context) : BaseRepository<User>
 
     public async Task<OperationResult<bool>> IsUsernameUniqueAsync(string username)
     {
+        var usernameLower = username.ToLower();
         var isUsernameUnique = !await _context.Users
-            .AnyAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+            .AnyAsync(u => u.Username.ToLower() == usernameLower);
 
         return OperationResult<bool>.Success(isUsernameUnique);
     }
 
     public async Task<OperationResult<bool>> IsEmailUniqueAsync(string email)
     {
+        var emailLower = email.ToLower();
         var isEmailUnique = !await _context.Users
-            .AnyAsync(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            .AnyAsync(u => u.Email == emailLower);
 
         return OperationResult<bool>.Success(isEmailUnique);
     }

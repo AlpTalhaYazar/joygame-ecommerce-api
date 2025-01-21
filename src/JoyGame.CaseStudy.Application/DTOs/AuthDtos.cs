@@ -15,6 +15,11 @@ public record ForgotPasswordResponseDto
     public required string Email { get; init; }
 }
 
+public record ForgotPasswordDto
+{
+    public required string Email { get; init; }
+}
+
 public record ResetPasswordDto
 {
     public required string Email { get; init; }
