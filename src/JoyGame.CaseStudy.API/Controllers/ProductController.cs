@@ -47,7 +47,7 @@ public class ProductController(
     }
 
     [HttpGet("{slug}")]
-    [Authorize]
+    [Authorize(Policy = "ProductView")]
     [ProducesResponseType(typeof(ApiResponse<ProductWithCategoryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ProductWithCategoryDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetBySlug(string slug)
@@ -56,8 +56,8 @@ public class ProductController(
         return HandleResult(productOperationResult.ToApiResponse());
     }
 
-    [HttpGet("category/{categoryId}")]
-    [Authorize]
+    [HttpGet("category/{categoryId:int}")]
+    [Authorize(Policy = "ProductView")]
     [ProducesResponseType(typeof(ApiResponse<List<ProductDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetByCategory(int categoryId)

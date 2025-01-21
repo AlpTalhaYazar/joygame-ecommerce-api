@@ -205,7 +205,7 @@ public class CategoryService(
                 Description = c.Description,
                 Slug = c.Slug,
                 ParentId = c.ParentId,
-                Children = BuildCategoryTree(categories, c.Id)
+                Children = BuildCategoryTree(c.Children.ToList(), c.Id)
             })
             .ToList();
     }
