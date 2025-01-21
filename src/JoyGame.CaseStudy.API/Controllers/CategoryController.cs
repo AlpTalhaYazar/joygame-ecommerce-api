@@ -36,13 +36,23 @@ public class CategoryController(
         return HandleResult(categoryTreeOperationResult.ToApiResponse());
     }
 
-    [HttpGet("{id}")]
-    [AllowAnonymous]
+    [HttpGet("{id:int}")]
+    [Authorize(Policy = "CategoryView")]
     [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(int id)
     {
         var categoryOperationResult = await _categoryService.GetByIdAsync(id);
+        return HandleResult(categoryOperationResult.ToApiResponse());
+    }
+
+    [HttpGet("{slug}")]
+    [Authorize(Policy = "CategoryView")]
+    [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CategoryDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetBySlug(string slug)
+    {
+        var categoryOperationResult = await _categoryService.GetBySlugAsync(slug);
         return HandleResult(categoryOperationResult.ToApiResponse());
     }
 

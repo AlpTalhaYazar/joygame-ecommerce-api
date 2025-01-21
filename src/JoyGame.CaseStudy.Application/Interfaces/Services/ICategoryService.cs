@@ -6,6 +6,7 @@ namespace JoyGame.CaseStudy.Application.Interfaces.Services;
 public interface ICategoryService
 {
     Task<OperationResult<CategoryDto?>> GetByIdAsync(int id);
+    Task<OperationResult<CategoryDto>> GetBySlugAsync(string slug);
     Task<OperationResult<List<CategoryDto>>> GetAllAsync();
     Task<OperationResult<List<CategoryTreeDto>>> GetCategoryTreeAsync();
     Task<OperationResult<CategoryDto>> CreateAsync(CreateCategoryDto createCategoryDto);

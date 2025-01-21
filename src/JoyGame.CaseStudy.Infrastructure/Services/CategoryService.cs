@@ -29,6 +29,17 @@ public class CategoryService(
         return OperationResult<CategoryDto?>.Success(CategoryDto.MapToCategoryDto(categoryOperationResult.Data));
     }
 
+    public async Task<OperationResult<CategoryDto>> GetBySlugAsync(string slug)
+    {
+        var categoryOperationResult = await _categoryRepository.GetBySlugAsync(slug);
+
+        if (!categoryOperationResult.IsSuccess)
+            return OperationResult<CategoryDto>.Failure(categoryOperationResult.ErrorCode,
+                categoryOperationResult.ErrorMessage);
+
+        return OperationResult<CategoryDto>.Success(CategoryDto.MapToCategoryDto(categoryOperationResult.Data));
+    }
+
     public async Task<OperationResult<List<CategoryDto>>> GetAllAsync()
     {
         var categoriesOperationResult = await _categoryRepository.GetAllAsync();
