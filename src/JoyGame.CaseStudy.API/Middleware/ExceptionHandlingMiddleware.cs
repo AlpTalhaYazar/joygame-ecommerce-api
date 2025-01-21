@@ -1,4 +1,6 @@
 using System.Net;
+using JoyGame.CaseStudy.API.Extensions;
+using JoyGame.CaseStudy.API.Models;
 using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.Exceptions;
 
@@ -36,8 +38,10 @@ public class ExceptionHandlingMiddleware(
 
         var response = exception switch
         {
-            EntityNotFoundException ex => Result<object>.Failure(ex.Message),
-            BusinessRuleException ex => Result<object>.Failure(ex.Message),
+            EntityNotFoundException ex => OperationResult<object>.Failure(ErrorCode.EntityNotFound, ex.Message)
+                .ToApiResponse(),
+            BusinessRuleException ex => OperationResult<object>.Failure(ErrorCode.BusinessRuleViolation, ex.Message)
+                .ToApiResponse(),
             _ => CreateUnexpectedErrorResponse(exception)
         };
 
@@ -45,12 +49,10 @@ public class ExceptionHandlingMiddleware(
         await context.Response.WriteAsJsonAsync(response);
     }
 
-    private Result<object> CreateUnexpectedErrorResponse(Exception exception)
+    private ApiResponse<object> CreateUnexpectedErrorResponse(Exception exception)
     {
-        var response = Result<object>.Failure(
-            _environment.IsDevelopment()
-                ? exception.ToString()
-                : "An unexpected error occurred");
+        var response = OperationResult<object>.Failure(ErrorCode.InternalServerError,
+            _environment.IsDevelopment() ? exception.ToString() : "An unexpected error occurred").ToApiResponse();
 
         return response;
     }

@@ -1,4 +1,6 @@
+using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Interfaces.Repositories;
 using JoyGame.CaseStudy.Domain.Common;
 using JoyGame.CaseStudy.Domain.Enums;
 using JoyGame.CaseStudy.Persistence.Context;
@@ -12,42 +14,74 @@ public class BaseRepository<TEntity>(ApplicationDbContext context) : IBaseReposi
     protected readonly ApplicationDbContext _context = context;
     protected readonly DbSet<TEntity> _dbSet = context.Set<TEntity>();
 
-    public virtual async Task<TEntity?> GetByIdAsync(int id)
+    public virtual async Task<OperationResult<TEntity?>> GetByIdAsync(int id)
     {
-        return await _dbSet.FindAsync(id);
+        var entity = await _dbSet.FindAsync(id);
+
+        if (entity == null || entity.Status == EntityStatus.Deleted)
+            return OperationResult<TEntity?>.Failure(ErrorCode.EntityNotFound, "Entity not found");
+
+        return OperationResult<TEntity?>.Success(entity);
     }
 
-    public virtual async Task<List<TEntity>> GetAllAsync()
+    public virtual async Task<OperationResult<List<TEntity>>> GetAllAsync()
     {
-        return await _dbSet.ToListAsync();
+        var entities = await _dbSet
+            .Where(e => e.Status != EntityStatus.Deleted)
+            .ToListAsync();
+
+        if (entities.Count == 0)
+            return OperationResult<List<TEntity>>.Failure(ErrorCode.EntityNotFound, "No entities found");
+
+        return OperationResult<List<TEntity>>.Success(entities);
     }
 
-    public virtual async Task<TEntity> AddAsync(TEntity entity)
+    public virtual async Task<OperationResult<TEntity>> AddAsync(TEntity entity)
     {
-        await _dbSet.AddAsync(entity);
-        await _context.SaveChangesAsync();
-        return entity;
+        var addResult = await _dbSet.AddAsync(entity);
+
+        if (addResult.State != EntityState.Added)
+            return OperationResult<TEntity>.Failure(ErrorCode.DatabaseError, "Error adding entity");
+
+        var saveResult = await _context.SaveChangesAsync();
+
+        if (saveResult == 0)
+            return OperationResult<TEntity>.Failure(ErrorCode.DatabaseError, "Error saving entity");
+
+        return OperationResult<TEntity>.Success(entity);
     }
 
-    public virtual async Task<TEntity> UpdateAsync(TEntity entity)
+    public virtual async Task<OperationResult<TEntity>> UpdateAsync(TEntity entity)
     {
         _context.Entry(entity).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-        return entity;
+        var saveResult = await _context.SaveChangesAsync();
+
+        if (saveResult == 0)
+            return OperationResult<TEntity>.Failure(ErrorCode.DatabaseError, "Error saving entity");
+
+        return OperationResult<TEntity>.Success(entity);
     }
 
-    public virtual async Task<bool> DeleteAsync(int id)
+    public virtual async Task<OperationResult<bool>> DeleteAsync(int id)
     {
-        var entity = await GetByIdAsync(id);
-        if (entity == null) return false;
+        var entityOperationResult = await GetByIdAsync(id);
 
-        entity.Status = EntityStatus.Deleted;
-        await _context.SaveChangesAsync();
-        return true;
+        if (entityOperationResult.Data == null)
+            return OperationResult<bool>.Failure(ErrorCode.EntityNotFound, "Entity not found");
+
+        entityOperationResult.Data.Status = EntityStatus.Deleted;
+        var saveResult = await _context.SaveChangesAsync();
+
+        if (saveResult == 0)
+            return OperationResult<bool>.Failure(ErrorCode.DatabaseError, "Error deleting entity");
+
+        return OperationResult<bool>.Success(true);
     }
 
-    public virtual async Task<bool> ExistsAsync(int id)
+    public virtual async Task<OperationResult<bool>> ExistsAsync(int id)
     {
-        return await _dbSet.AnyAsync(e => e.Id == id);
+        var anyResult = await _dbSet.AnyAsync(e => e.Id == id);
+
+        return OperationResult<bool>.Success(anyResult);
     }
 }

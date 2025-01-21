@@ -1,6 +1,9 @@
+using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Exceptions;
 using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Interfaces.Repositories;
+using JoyGame.CaseStudy.Application.Interfaces.Services;
 using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -15,35 +18,54 @@ public class CategoryService(
     private readonly ICategoryRepository _categoryRepository = categoryRepository;
     private readonly ILogger<CategoryService> _logger = logger;
 
-    public async Task<CategoryDto?> GetByIdAsync(int id)
+    public async Task<OperationResult<CategoryDto?>> GetByIdAsync(int id)
     {
-        var category = await _categoryRepository.GetByIdAsync(id);
-        return category != null ? CategoryDto.MapToCategoryDto(category) : null;
+        var categoryOperationResult = await _categoryRepository.GetByIdAsync(id);
+
+        if (!categoryOperationResult.IsSuccess)
+            return OperationResult<CategoryDto?>.Failure(categoryOperationResult.ErrorCode,
+                categoryOperationResult.ErrorMessage);
+
+        return OperationResult<CategoryDto?>.Success(CategoryDto.MapToCategoryDto(categoryOperationResult.Data));
     }
 
-    public async Task<List<CategoryDto>> GetAllAsync()
+    public async Task<OperationResult<List<CategoryDto>>> GetAllAsync()
     {
-        var categories = await _categoryRepository.GetAllAsync();
-        return categories.Select(CategoryDto.MapToCategoryDto).ToList();
+        var categoriesOperationResult = await _categoryRepository.GetAllAsync();
+
+        if (!categoriesOperationResult.IsSuccess)
+            return OperationResult<List<CategoryDto>>.Failure(categoriesOperationResult.ErrorCode,
+                categoriesOperationResult.ErrorMessage);
+
+        var categories = categoriesOperationResult.Data.Select(CategoryDto.MapToCategoryDto).ToList();
+
+        return OperationResult<List<CategoryDto>>.Success(categories);
     }
 
-    public async Task<List<CategoryTreeDto>> GetCategoryTreeAsync()
+    public async Task<OperationResult<List<CategoryTreeDto>>> GetCategoryTreeAsync()
     {
-        var categories = await _categoryRepository.GetCategoryTreeAsync();
+        var categoriesOperationResult = await _categoryRepository.GetCategoryTreeAsync();
 
-        return BuildCategoryTree(categories);
+        if (!categoriesOperationResult.IsSuccess)
+            return OperationResult<List<CategoryTreeDto>>.Failure(categoriesOperationResult.ErrorCode,
+                categoriesOperationResult.ErrorMessage);
+
+        var categories = BuildCategoryTree(categoriesOperationResult.Data);
+
+        return OperationResult<List<CategoryTreeDto>>.Success(categories);
     }
 
-    public async Task<CategoryDto> CreateAsync(CreateCategoryDto createCategoryDto)
+    public async Task<OperationResult<CategoryDto>> CreateAsync(CreateCategoryDto createCategoryDto)
     {
         if (createCategoryDto.ParentId.HasValue)
         {
-            var parentExists = await _categoryRepository.ExistsAsync(createCategoryDto.ParentId.Value);
-            if (!parentExists)
+            var parentExistsOperationResult = await _categoryRepository.ExistsAsync(createCategoryDto.ParentId.Value);
+            if (parentExistsOperationResult.IsSuccess == false)
             {
                 _logger.LogWarning("Attempted to create category with non-existent parent ID: {ParentId}",
                     createCategoryDto.ParentId.Value);
-                throw new BusinessRuleException("Parent category does not exist");
+                return OperationResult<CategoryDto>.Failure(ErrorCode.EntityNotFound,
+                    $"Parent category with ID {createCategoryDto.ParentId} not found");
             }
         }
 
@@ -59,76 +81,106 @@ public class CategoryService(
             CreatedBy = "System",
         };
 
-        var createdCategory = await _categoryRepository.AddAsync(category);
-        _logger.LogInformation("Created new category with ID: {CategoryId}", createdCategory.Id);
+        var createdCategoryOperationResult = await _categoryRepository.AddAsync(category);
 
-        return CategoryDto.MapToCategoryDto(createdCategory);
+        if (!createdCategoryOperationResult.IsSuccess)
+        {
+            return OperationResult<CategoryDto>.Failure(createdCategoryOperationResult.ErrorCode,
+                createdCategoryOperationResult.ErrorMessage);
+        }
+
+        _logger.LogInformation("Created new category with ID: {CategoryId}", createdCategoryOperationResult.Data.Id);
+
+        var categoryDto = CategoryDto.MapToCategoryDto(createdCategoryOperationResult.Data);
+
+        return OperationResult<CategoryDto>.Success(categoryDto);
     }
 
-    public async Task<CategoryDto> UpdateAsync(int id, UpdateCategoryDto updateCategoryDto)
+    public async Task<OperationResult<CategoryDto>> UpdateAsync(int id, UpdateCategoryDto updateCategoryDto)
     {
-        var category = await _categoryRepository.GetByIdAsync(id);
-        if (category == null)
+        var categoryOperationResult = await _categoryRepository.GetByIdAsync(id);
+        if (categoryOperationResult.IsSuccess == false)
         {
             _logger.LogWarning("Attempted to update non-existent category with ID: {CategoryId}", id);
-            throw new EntityNotFoundException(nameof(Category), id);
+            return OperationResult<CategoryDto>.Failure(categoryOperationResult.ErrorCode,
+                categoryOperationResult.ErrorMessage);
         }
 
         if (updateCategoryDto.ParentId.HasValue)
         {
-            var parentExists = await _categoryRepository.ExistsAsync(updateCategoryDto.ParentId.Value);
-            if (!parentExists)
+            var parentExistsOperationResult = await _categoryRepository.ExistsAsync(updateCategoryDto.ParentId.Value);
+            if (parentExistsOperationResult.IsSuccess == false)
             {
-                throw new BusinessRuleException("Parent category does not exist");
+                _logger.LogWarning("Attempted to update category with non-existent parent ID: {ParentId}",
+                    updateCategoryDto.ParentId.Value);
+                return OperationResult<CategoryDto>.Failure(ErrorCode.EntityNotFound,
+                    $"Parent category with ID {updateCategoryDto.ParentId} not found");
             }
 
             if (await WouldCreateCircularReference(id, updateCategoryDto.ParentId.Value))
             {
-                throw new BusinessRuleException("Cannot set parent category as it would create a circular reference");
+                return OperationResult<CategoryDto>.Failure(ErrorCode.BusinessRuleViolation,
+                    "Cannot create circular reference");
             }
         }
 
-        category.Name = updateCategoryDto.Name;
-        category.Description = updateCategoryDto.Description ?? String.Empty;
-        category.ParentId = updateCategoryDto.ParentId;
-        category.Slug = GenerateSlug(updateCategoryDto.Name);
+        categoryOperationResult.Data.Name = updateCategoryDto.Name;
+        categoryOperationResult.Data.Description = updateCategoryDto.Description ?? String.Empty;
+        categoryOperationResult.Data.ParentId = updateCategoryDto.ParentId;
+        categoryOperationResult.Data.Slug = GenerateSlug(updateCategoryDto.Name);
 
-        var updatedCategory = await _categoryRepository.UpdateAsync(category);
+        var updatedCategoryOperationResult = await _categoryRepository.UpdateAsync(categoryOperationResult.Data);
+
+        if (!updatedCategoryOperationResult.IsSuccess)
+        {
+            return OperationResult<CategoryDto>.Failure(updatedCategoryOperationResult.ErrorCode,
+                updatedCategoryOperationResult.ErrorMessage);
+        }
+
         _logger.LogInformation("Updated category with ID: {CategoryId}", id);
 
-        return CategoryDto.MapToCategoryDto(updatedCategory);
+        var categoryDto = CategoryDto.MapToCategoryDto(updatedCategoryOperationResult.Data);
+
+        return OperationResult<CategoryDto>.Success(categoryDto);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<OperationResult<bool>> DeleteAsync(int id)
     {
-        var hasChildren = await _categoryRepository.HasChildrenAsync(id);
-        if (hasChildren)
+        var hasChildrenOperationResult = await _categoryRepository.HasChildrenAsync(id);
+        if (hasChildrenOperationResult.Data)
         {
             _logger.LogWarning("Attempted to delete category with children. Category ID: {CategoryId}", id);
-            throw new BusinessRuleException("Cannot delete category that has child categories");
+            return OperationResult<bool>.Failure(ErrorCode.BusinessRuleViolation,
+                "Cannot delete category with child categories");
         }
 
-        var hasProducts = await _categoryRepository.HasProductsAsync(id);
-        if (hasProducts)
+        var hasProductsOperationResult = await _categoryRepository.HasProductsAsync(id);
+        if (hasProductsOperationResult.Data)
         {
             _logger.LogWarning("Attempted to delete category with products. Category ID: {CategoryId}", id);
-            throw new BusinessRuleException("Cannot delete category that has products");
+            return OperationResult<bool>.Failure(ErrorCode.BusinessRuleViolation,
+                "Cannot delete category with products");
         }
 
-        var result = await _categoryRepository.DeleteAsync(id);
-        if (result)
+        var deleteOperationResult = await _categoryRepository.DeleteAsync(id);
+        if (deleteOperationResult.IsSuccess == false)
         {
-            _logger.LogInformation("Deleted category with ID: {CategoryId}", id);
+            _logger.LogWarning("Failed to delete category with ID: {CategoryId}", id);
+            return OperationResult<bool>.Failure(deleteOperationResult.ErrorCode, deleteOperationResult.ErrorMessage);
         }
 
-        return result;
+        return OperationResult<bool>.Success(true);
     }
 
-    public async Task<List<CategoryHierarchyDto>> GetCategoryHierarchyAsync()
+    public async Task<OperationResult<List<CategoryHierarchyDto>>> GetCategoryHierarchyAsync()
     {
-        var categories = await _categoryRepository.GetCategoryHierarchyAsync();
+        var categoriesOperationResult = await _categoryRepository.GetCategoryHierarchyAsync();
 
-        return categories;
+        if (!categoriesOperationResult.IsSuccess)
+            return OperationResult<List<CategoryHierarchyDto>>.Failure(categoriesOperationResult.ErrorCode,
+                categoriesOperationResult.ErrorMessage);
+
+        return OperationResult<List<CategoryHierarchyDto>>.Success(categoriesOperationResult.Data);
     }
 
     private static List<CategoryTreeDto> BuildCategoryTree(List<Category> categories, int? parentId = null)
@@ -158,13 +210,13 @@ public class CategoryService(
                 return true;
             }
 
-            var parent = await _categoryRepository.GetByIdAsync(currentParentId);
-            if (parent == null)
+            var parentOperationResult = await _categoryRepository.GetByIdAsync(currentParentId);
+            if (parentOperationResult.IsSuccess == false || parentOperationResult.Data == null)
             {
                 break;
             }
 
-            currentParentId = parent.ParentId.Value;
+            currentParentId = parentOperationResult.Data.ParentId.Value;
         }
 
         return false;

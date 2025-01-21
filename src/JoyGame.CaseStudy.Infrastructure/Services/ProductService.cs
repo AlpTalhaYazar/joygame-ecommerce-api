@@ -1,6 +1,9 @@
+using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Exceptions;
 using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Interfaces.Repositories;
+using JoyGame.CaseStudy.Application.Interfaces.Services;
 using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -17,74 +20,99 @@ public class ProductService(
     private readonly ICategoryRepository _categoryRepository = categoryRepository;
     private readonly ILogger<ProductService> _logger = logger;
 
-    public async Task<ProductDto?> GetByIdAsync(int id)
+    public async Task<OperationResult<ProductDto?>> GetByIdAsync(int id)
     {
-        var product = await _productRepository.GetByIdAsync(id);
-        if (product == null)
+        var productOperationResult = await _productRepository.GetByIdAsync(id);
+        if (productOperationResult.IsSuccess == false)
         {
-            return null;
+            _logger.LogWarning("Attempted to get non-existent product with ID: {ProductId}", id);
+            return OperationResult<ProductDto?>.Failure(productOperationResult.ErrorCode,
+                productOperationResult.ErrorMessage);
         }
 
-        var category = await _categoryRepository.GetByIdAsync(product.CategoryId);
-        return await ProductDto.MapToProductDtoAsync(product, category);
+        var categoryOperationResult = await _categoryRepository.GetByIdAsync(productOperationResult.Data.CategoryId);
+
+        var product = await ProductDto.MapToProductDtoAsync(productOperationResult.Data, categoryOperationResult.Data);
+
+        return OperationResult<ProductDto?>.Success(product);
     }
 
-    public async Task<ProductDto?> GetBySlugAsync(string slug)
+    public async Task<OperationResult<ProductDto?>> GetBySlugAsync(string slug)
     {
-        var product = await _productRepository.GetBySlugAsync(slug);
-        if (product == null)
+        var productOperationResult = await _productRepository.GetBySlugAsync(slug);
+        if (productOperationResult.IsSuccess == false)
         {
-            return null;
+            _logger.LogWarning("Attempted to get product by non-existent slug: {Slug}", slug);
+            return OperationResult<ProductDto?>.Failure(productOperationResult.ErrorCode,
+                productOperationResult.ErrorMessage);
         }
 
-        var category = await _categoryRepository.GetByIdAsync(product.CategoryId);
-        return await ProductDto.MapToProductDtoAsync(product, category);
+        var categoryOperationResult = await _categoryRepository.GetByIdAsync(productOperationResult.Data.CategoryId);
+
+        if (categoryOperationResult.IsSuccess == false)
+        {
+            _logger.LogWarning("Product retrieved with non-existent category ID: {CategoryId}",
+                productOperationResult.Data.CategoryId);
+            return OperationResult<ProductDto?>.Failure(categoryOperationResult.ErrorCode,
+                categoryOperationResult.ErrorMessage);
+        }
+
+        var product = await ProductDto.MapToProductDtoAsync(productOperationResult.Data, categoryOperationResult.Data);
+
+        return OperationResult<ProductDto?>.Success(product);
     }
 
-    public async Task<List<ProductDto>> GetAllAsync()
+    public async Task<OperationResult<List<ProductDto>>> GetAllAsync()
     {
-        var products = await _productRepository.GetAllAsync();
-        var categories = await _categoryRepository.GetAllAsync();
+        var productsOperationResult = await _productRepository.GetAllAsync();
+        var categoriesOperationResult = await _categoryRepository.GetAllAsync();
 
-        return products.Select(async product =>
+        var products = productsOperationResult.Data.Select(async product =>
         {
-            var category = categories.FirstOrDefault(c => c.Id == product.CategoryId);
+            var category = categoriesOperationResult.Data.FirstOrDefault(c => c.Id == product.CategoryId);
             return await ProductDto.MapToProductDtoAsync(product, category);
         }).Select(t => t.Result).ToList();
+
+        return OperationResult<List<ProductDto>>.Success(products);
     }
 
-    public async Task<List<ProductDto>> GetByCategoryIdAsync(int categoryId)
+    public async Task<OperationResult<List<ProductDto>>> GetByCategoryIdAsync(int categoryId)
     {
-        var isCategoryExists = await _categoryRepository.ExistsAsync(categoryId);
-        if (!isCategoryExists)
+        var isCategoryExistsOperationResult = await _categoryRepository.ExistsAsync(categoryId);
+        if (isCategoryExistsOperationResult.IsSuccess == false)
         {
             _logger.LogWarning("Attempted to get products by non-existent category ID: {CategoryId}", categoryId);
-            throw new BusinessRuleException("Category does not exist");
+            return OperationResult<List<ProductDto>>.Failure(isCategoryExistsOperationResult.ErrorCode,
+                isCategoryExistsOperationResult.ErrorMessage);
         }
 
-        var products = _productRepository.GetByCategoryIdAsync(categoryId);
-        var categories = _categoryRepository.GetAllAsync();
+        var productsOperationResult = await _productRepository.GetByCategoryIdAsync(categoryId);
+        var categoriesOperationResult = await _categoryRepository.GetAllAsync();
 
-        return products.Result.Select(async product =>
+        var products = productsOperationResult.Data.Select(async product =>
         {
-            var category = categories.Result.FirstOrDefault(c => c.Id == product.CategoryId);
+            var category = categoriesOperationResult.Data.FirstOrDefault(c => c.Id == product.CategoryId);
             return await ProductDto.MapToProductDtoAsync(product, category);
         }).Select(t => t.Result).ToList();
+
+        return OperationResult<List<ProductDto>>.Success(products);
     }
 
-    public async Task<ProductDto> CreateAsync(CreateProductDto createProductDto)
+    public async Task<OperationResult<ProductDto>> CreateAsync(CreateProductDto createProductDto)
     {
-        var category = await _categoryRepository.GetByIdAsync(createProductDto.CategoryId);
-        if (category == null)
+        var categoryOperationResult = await _categoryRepository.GetByIdAsync(createProductDto.CategoryId);
+        if (categoryOperationResult.IsSuccess == false)
         {
             _logger.LogWarning("Attempted to create product with non-existent category ID: {CategoryId}",
                 createProductDto.CategoryId);
-            throw new BusinessRuleException("Selected category does not exist");
+            return OperationResult<ProductDto>.Failure(categoryOperationResult.ErrorCode,
+                categoryOperationResult.ErrorMessage);
         }
 
         if (createProductDto.StockQuantity < 0)
         {
-            throw new BusinessRuleException("Stock quantity cannot be negative");
+            return OperationResult<ProductDto>.Failure(ErrorCode.InvalidStockQuantity,
+                "Stock quantity cannot be negative");
         }
 
         var product = new Product
@@ -110,87 +138,138 @@ public class ProductService(
             product.BusinessStatus = ProductStatus.OutOfStock;
         }
 
-        var createdProduct = await _productRepository.AddAsync(product);
-        _logger.LogInformation("Created new product with ID: {ProductId}", createdProduct.Id);
+        var createdProductOperationResult = await _productRepository.AddAsync(product);
 
-        return await ProductDto.MapToProductDtoAsync(createdProduct, category);
-    }
-
-    public async Task<ProductDto> UpdateAsync(int id, UpdateProductDto updateProductDto)
-    {
-        var product = await _productRepository.GetByIdAsync(id);
-        if (product == null)
+        if (createdProductOperationResult.IsSuccess == false)
         {
-            _logger.LogWarning("Attempted to update non-existent product with ID: {ProductId}", id);
-            throw new EntityNotFoundException(nameof(Product), id);
+            return OperationResult<ProductDto>.Failure(createdProductOperationResult.ErrorCode,
+                createdProductOperationResult.ErrorMessage);
         }
 
-        if (product.CategoryId != updateProductDto.CategoryId)
+        _logger.LogInformation("Created new product with ID: {ProductId}", createdProductOperationResult.Data.Id);
+
+        var productDto =
+            await ProductDto.MapToProductDtoAsync(createdProductOperationResult.Data, categoryOperationResult.Data);
+
+        return OperationResult<ProductDto>.Success(productDto);
+    }
+
+    public async Task<OperationResult<ProductDto>> UpdateAsync(int id, UpdateProductDto updateProductDto)
+    {
+        var productOperationResult = await _productRepository.GetByIdAsync(id);
+        if (productOperationResult.IsSuccess == false)
         {
-            var categoryExists = await _categoryRepository.ExistsAsync(updateProductDto.CategoryId);
-            if (!categoryExists)
+            _logger.LogWarning("Attempted to update non-existent product with ID: {ProductId}", id);
+            return OperationResult<ProductDto>.Failure(productOperationResult.ErrorCode,
+                productOperationResult.ErrorMessage);
+        }
+
+        if (productOperationResult.Data.CategoryId != updateProductDto.CategoryId)
+        {
+            var categoryExistsOperationResult = await _categoryRepository.ExistsAsync(updateProductDto.CategoryId);
+            if (categoryExistsOperationResult.IsSuccess == false)
             {
-                throw new BusinessRuleException("Selected category does not exist");
+                _logger.LogWarning("Attempted to update product with non-existent category ID: {CategoryId}",
+                    updateProductDto.CategoryId);
+                return OperationResult<ProductDto>.Failure(categoryExistsOperationResult.ErrorCode,
+                    categoryExistsOperationResult.ErrorMessage);
             }
         }
 
         if (updateProductDto.StockQuantity < 0)
         {
-            throw new BusinessRuleException("Stock quantity cannot be negative");
+            return OperationResult<ProductDto>.Failure(ErrorCode.InvalidStockQuantity,
+                "Stock quantity cannot be negative");
         }
 
-        product.Name = updateProductDto.Name;
-        product.Description = updateProductDto.Description ?? string.Empty;
-        product.Price = updateProductDto.Price;
-        product.ImageUrl = updateProductDto.ImageUrl ?? string.Empty;
-        product.CategoryId = updateProductDto.CategoryId;
-        product.Slug = GenerateSlug(updateProductDto.Name);
+        productOperationResult.Data.Name = updateProductDto.Name;
+        productOperationResult.Data.Description = updateProductDto.Description ?? string.Empty;
+        productOperationResult.Data.Price = updateProductDto.Price;
+        productOperationResult.Data.ImageUrl = updateProductDto.ImageUrl ?? string.Empty;
+        productOperationResult.Data.CategoryId = updateProductDto.CategoryId;
+        productOperationResult.Data.Slug = GenerateSlug(updateProductDto.Name);
 
-        await UpdateStockAndStatus(product, updateProductDto.StockQuantity, updateProductDto.BusinessStatus);
+        await UpdateStockAndStatus(productOperationResult.Data, updateProductDto.StockQuantity,
+            updateProductDto.BusinessStatus);
 
-        var updatedProduct = await _productRepository.UpdateAsync(product);
+        var updatedProductOperationResult = await _productRepository.UpdateAsync(productOperationResult.Data);
+
+        if (updatedProductOperationResult.IsSuccess == false)
+        {
+            return OperationResult<ProductDto>.Failure(updatedProductOperationResult.ErrorCode,
+                updatedProductOperationResult.ErrorMessage);
+        }
+
         _logger.LogInformation("Updated product with ID: {ProductId}", id);
 
-        var category = await _categoryRepository.GetByIdAsync(updatedProduct.CategoryId);
+        var categoryOperationResult =
+            await _categoryRepository.GetByIdAsync(updatedProductOperationResult.Data.CategoryId);
 
-        return await ProductDto.MapToProductDtoAsync(updatedProduct, category);
-    }
-
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var result = await _productRepository.DeleteAsync(id);
-        if (result)
+        if (categoryOperationResult.IsSuccess == false)
         {
-            _logger.LogInformation("Deleted product with ID: {ProductId}", id);
+            _logger.LogWarning("Product updated with non-existent category ID: {CategoryId}",
+                updatedProductOperationResult.Data.CategoryId);
+            return OperationResult<ProductDto>.Failure(categoryOperationResult.ErrorCode,
+                categoryOperationResult.ErrorMessage);
         }
 
-        return result;
+        var product =
+            await ProductDto.MapToProductDtoAsync(updatedProductOperationResult.Data, categoryOperationResult.Data);
+
+        return OperationResult<ProductDto>.Success(product);
     }
 
-    public async Task<List<ProductDto>> SearchAsync(string searchTerm, int? categoryId = null)
+    public async Task<OperationResult<bool>> DeleteAsync(int id)
+    {
+        var deleteOperationResult = await _productRepository.DeleteAsync(id);
+        if (deleteOperationResult.IsSuccess == false)
+        {
+            _logger.LogWarning("Attempted to delete non-existent product with ID: {ProductId}", id);
+            return OperationResult<bool>.Failure(deleteOperationResult.ErrorCode, deleteOperationResult.ErrorMessage);
+        }
+
+        return OperationResult<bool>.Success(true);
+    }
+
+    public async Task<OperationResult<List<ProductDto>>> SearchAsync(string searchTerm, int? categoryId = null)
     {
         if (categoryId.HasValue)
         {
-            var categoryExists = await _categoryRepository.ExistsAsync(categoryId.Value);
-            if (!categoryExists)
+            var categoryExistsOperationResult = await _categoryRepository.ExistsAsync(categoryId.Value);
+            if (categoryExistsOperationResult.IsSuccess == false)
             {
-                throw new EntityNotFoundException(nameof(Category), categoryId.Value);
+                _logger.LogWarning("Attempted to search products by non-existent category ID: {CategoryId}",
+                    categoryId);
+                return OperationResult<List<ProductDto>>.Failure(categoryExistsOperationResult.ErrorCode,
+                    categoryExistsOperationResult.ErrorMessage);
             }
         }
 
-        var products = await _productRepository.SearchProductsAsync(searchTerm, categoryId);
-        return products.Select(async product =>
+        var productsOperationResult = await _productRepository.SearchProductsAsync(searchTerm, categoryId);
+
+        if (productsOperationResult.IsSuccess == false)
         {
-            var category = await _categoryRepository.GetByIdAsync(product.CategoryId);
-            return await ProductDto.MapToProductDtoAsync(product, category);
+            return OperationResult<List<ProductDto>>.Failure(productsOperationResult.ErrorCode,
+                productsOperationResult.ErrorMessage);
+        }
+
+        var products = productsOperationResult.Data.Select(async product =>
+        {
+            var categoryOperationResult = await _categoryRepository.GetByIdAsync(product.CategoryId);
+
+            return await ProductDto.MapToProductDtoAsync(product, categoryOperationResult.Data);
         }).Select(t => t.Result).ToList();
+
+        return OperationResult<List<ProductDto>>.Success(products);
     }
 
-    public async Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1, int pageSize = 10, int? categoryId = null, string? searchText = null)
+    public async Task<PaginatedOperationResult<(List<ProductWithCategoryDto> data, int total)>> GetProductsWithCategoriesAsync(
+        int pageNumber = 1, int pageSize = 10, int? categoryId = null, string? searchText = null)
     {
-        var productsDataAndTotal = await _productRepository.GetProductsWithCategoriesAsync(pageNumber, pageSize, categoryId, searchText);
+        var productsDataAndTotalOperationResult =
+            await _productRepository.GetProductsWithCategoriesAsync(pageNumber, pageSize, categoryId, searchText);
 
-        return productsDataAndTotal;
+        return productsDataAndTotalOperationResult;
     }
 
     private async Task UpdateStockAndStatus(Product product, int newStockQuantity, ProductStatus newStatus)

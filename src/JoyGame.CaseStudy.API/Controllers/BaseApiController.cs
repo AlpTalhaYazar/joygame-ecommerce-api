@@ -1,3 +1,4 @@
+using JoyGame.CaseStudy.API.Models;
 using JoyGame.CaseStudy.Application.Common;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,12 +8,12 @@ namespace JoyGame.CaseStudy.API.Controllers;
 [Route("api/[controller]")]
 public class BaseApiController : ControllerBase
 {
-    protected IActionResult HandleResult<T>(Result<T> result)
+    protected IActionResult HandleResult<T>(ApiResponse<T> result)
     {
-        if (!result.IsSuccess && result.Data == null)
+        if (!result.Success && result.Data == null)
             return NotFound(result);
 
-        if (result.IsSuccess)
+        if (result.Success)
             return Ok(result);
 
         return BadRequest(result);

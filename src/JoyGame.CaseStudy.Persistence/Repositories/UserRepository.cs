@@ -1,4 +1,5 @@
-using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Common;
+using JoyGame.CaseStudy.Application.Interfaces.Repositories;
 using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
@@ -9,35 +10,49 @@ public class UserRepository(ApplicationDbContext context) : BaseRepository<User>
 {
     private readonly ApplicationDbContext _context = context;
 
-    public async Task<User?> GetByUsernameAsync(string username)
+    public async Task<OperationResult<User?>> GetByUsernameAsync(string username)
     {
-        return await _context.Users
+        var user = await _context.Users
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
             .ThenInclude(r => r.RolePermissions)
             .ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(u => u.Username == username);
+
+        if (user == null)
+            return OperationResult<User?>.Failure(ErrorCode.UserNotFound, "User not found");
+
+        return OperationResult<User?>.Success(user);
     }
 
-    public async Task<User?> GetByEmailAsync(string email)
+    public async Task<OperationResult<User?>> GetByEmailAsync(string email)
     {
-        return await _context.Users
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+
+        if (user == null)
+            return OperationResult<User?>.Failure(ErrorCode.UserNotFound, "User not found");
+
+        return OperationResult<User?>.Success(user);
     }
 
-    public async Task<bool> IsUsernameUniqueAsync(string username)
+    public async Task<OperationResult<bool>> IsUsernameUniqueAsync(string username)
     {
-        return !await _context.Users
+        var isUsernameUnique = !await _context.Users
             .AnyAsync(u => u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+
+        return OperationResult<bool>.Success(isUsernameUnique);
     }
 
-    public async Task<bool> IsEmailUniqueAsync(string email)
+    public async Task<OperationResult<bool>> IsEmailUniqueAsync(string email)
     {
-        return !await _context.Users
+        var isEmailUnique = !await _context.Users
             .AnyAsync(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+
+        return OperationResult<bool>.Success(isEmailUnique);
     }
 
-    public async Task<List<string>> GetUserPermissionsAsync(int userId)
+    public async Task<OperationResult<List<string>>> GetUserPermissionsAsync(int userId)
     {
         var permissions = await _context.Users
             .Where(u => u.Id == userId)
@@ -47,10 +62,13 @@ public class UserRepository(ApplicationDbContext context) : BaseRepository<User>
             .Distinct()
             .ToListAsync();
 
-        return permissions;
+        if (permissions.Count == 0)
+            return OperationResult<List<string>>.Failure(ErrorCode.PermissionNotFound, "No permissions found");
+
+        return OperationResult<List<string>>.Success(permissions);
     }
 
-    public async Task<bool> SaveResetTokenAsync(int userId, string token, DateTime expiresAt)
+    public async Task<OperationResult<bool>> SaveResetTokenAsync(int userId, string token, DateTime expiresAt)
     {
         var resetToken = new PasswordResetToken
         {
@@ -61,35 +79,53 @@ public class UserRepository(ApplicationDbContext context) : BaseRepository<User>
             CreatedBy = userId.ToString()
         };
 
-        await _context.Set<PasswordResetToken>().AddAsync(resetToken);
-        await _context.SaveChangesAsync();
-        return true;
+        var addResult = await _context.Set<PasswordResetToken>().AddAsync(resetToken);
+
+        if (addResult.State != EntityState.Added)
+            return OperationResult<bool>.Failure(ErrorCode.DatabaseError, "Error adding entity");
+
+        var saveResult = await _context.SaveChangesAsync();
+
+        if (saveResult == 0)
+            return OperationResult<bool>.Failure(ErrorCode.DatabaseError, "Error saving entity");
+
+        return OperationResult<bool>.Success(true);
     }
 
-    public async Task<bool> ValidateResetTokenAsync(string email, string token)
+    public async Task<OperationResult<bool>> ValidateResetTokenAsync(string email, string token)
     {
-        var user = await GetByEmailAsync(email);
-        if (user == null) return false;
+        var userOperationResult = await GetByEmailAsync(email);
+
+        if (!userOperationResult.IsSuccess)
+            return OperationResult<bool>.Failure(userOperationResult.ErrorCode, userOperationResult.ErrorMessage);
 
         var isResetTokenValid = await _context.Set<PasswordResetToken>()
             .AnyAsync(rt =>
-                rt.UserId == user.Id &&
+                rt.UserId == userOperationResult.Data.Id &&
                 rt.Token == token &&
                 rt.ExpiresAt > DateTime.UtcNow &&
                 !rt.IsUsed);
 
-        return isResetTokenValid;
+        if (!isResetTokenValid)
+            return OperationResult<bool>.Failure(ErrorCode.InvalidToken, "Token is invalid");
+
+        return OperationResult<bool>.Success(isResetTokenValid);
     }
 
-    public async Task<bool> MarkResetTokenAsUsedAsync(string token)
+    public async Task<OperationResult<bool>> MarkResetTokenAsUsedAsync(string token)
     {
         var resetToken = await _context.Set<PasswordResetToken>()
             .FirstOrDefaultAsync(rt => rt.Token == token);
 
-        if (resetToken == null) return false;
+        if (resetToken == null)
+            return OperationResult<bool>.Failure(ErrorCode.TokenNotFound, "Token not found");
 
         resetToken.IsUsed = true;
-        await _context.SaveChangesAsync();
-        return true;
+        var saveResult = await _context.SaveChangesAsync();
+
+        if (saveResult == 0)
+            return OperationResult<bool>.Failure(ErrorCode.DatabaseError, "Error saving entity");
+
+        return OperationResult<bool>.Success(true);
     }
 }

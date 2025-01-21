@@ -1,4 +1,5 @@
 using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Interfaces.Repositories;
 using JoyGame.CaseStudy.Persistence.Context;
 using JoyGame.CaseStudy.Persistence.Database;
 using JoyGame.CaseStudy.Persistence.Repositories;

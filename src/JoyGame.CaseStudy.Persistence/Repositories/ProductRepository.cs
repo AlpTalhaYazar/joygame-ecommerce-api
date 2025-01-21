@@ -1,6 +1,7 @@
 using System.Data;
+using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.DTOs;
-using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Interfaces.Repositories;
 using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
 using JoyGame.CaseStudy.Persistence.Context;
@@ -13,46 +14,74 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
 {
     private readonly ApplicationDbContext _context = context;
 
-    public async Task<Product?> GetBySlugAsync(string slug)
+    public async Task<OperationResult<Product?>> GetBySlugAsync(string slug)
     {
-        return await _context.Products
+        var product = await _context.Products
             .Include(p => p.Category)
             .FirstOrDefaultAsync(p => p.Slug == slug);
+
+        if (product == null)
+            return OperationResult<Product?>.Failure(ErrorCode.ProductNotFound, "Product not found");
+
+        return OperationResult<Product?>.Success(product);
     }
 
-    public async Task<List<Product>> GetByCategoryIdAsync(int categoryId)
+    public async Task<OperationResult<List<Product>>> GetByCategoryIdAsync(int categoryId)
     {
-        var categoryIds = await GetCategoryAndChildrenIds(categoryId);
+        var categoryIdsOperationResult = await GetCategoryAndChildrenIds(categoryId);
 
-        return await _context.Products
+        if (!categoryIdsOperationResult.IsSuccess)
+            return OperationResult<List<Product>>.Failure(categoryIdsOperationResult.ErrorCode,
+                categoryIdsOperationResult.ErrorMessage);
+
+        var products = await _context.Products
             .Include(p => p.Category)
-            .Where(p => categoryIds.Contains(p.CategoryId))
+            .Where(p => categoryIdsOperationResult.Data.Contains(p.CategoryId))
             .OrderBy(p => p.Name)
             .ToListAsync();
+
+        if (products.Count == 0)
+            return OperationResult<List<Product>>.Failure(ErrorCode.ProductNotFound, "No products found");
+
+        return OperationResult<List<Product>>.Success(products);
     }
 
-    public async Task<List<Product>> GetActiveByCategoryIdAsync(int categoryId)
+    public async Task<OperationResult<List<Product>>> GetActiveByCategoryIdAsync(int categoryId)
     {
-        var categoryIds = await GetCategoryAndChildrenIds(categoryId);
+        var categoryIdsOperationResult = await GetCategoryAndChildrenIds(categoryId);
 
-        return await _context.Products
+        if (!categoryIdsOperationResult.IsSuccess)
+            return OperationResult<List<Product>>.Failure(categoryIdsOperationResult.ErrorCode,
+                categoryIdsOperationResult.ErrorMessage);
+
+        var products = await _context.Products
             .Include(p => p.Category)
-            .Where(p => categoryIds.Contains(p.CategoryId))
+            .Where(p => categoryIdsOperationResult.Data.Contains(p.CategoryId))
             .Where(p => p.Status == EntityStatus.Active)
             .Where(p => p.BusinessStatus == ProductStatus.Available)
             .OrderBy(p => p.Name)
             .ToListAsync();
+
+        if (products.Count == 0)
+            return OperationResult<List<Product>>.Failure(ErrorCode.ProductNotFound, "No products found");
+
+        return OperationResult<List<Product>>.Success(products);
     }
 
-    public async Task<List<Product>> SearchProductsAsync(string searchTerm, int? categoryId = null)
+    public async Task<OperationResult<List<Product>>> SearchProductsAsync(string searchTerm, int? categoryId = null)
     {
         IQueryable<Product> query = _context.Products
             .Include(p => p.Category);
 
         if (categoryId.HasValue)
         {
-            var categoryIds = await GetCategoryAndChildrenIds(categoryId.Value);
-            query = query.Where(p => categoryIds.Contains(p.CategoryId));
+            var categoryIdsOperationResult = await GetCategoryAndChildrenIds(categoryId.Value);
+
+            if (!categoryIdsOperationResult.IsSuccess)
+                return OperationResult<List<Product>>.Failure(categoryIdsOperationResult.ErrorCode,
+                    categoryIdsOperationResult.ErrorMessage);
+
+            query = query.Where(p => categoryIdsOperationResult.Data.Contains(p.CategoryId));
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -65,14 +94,23 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
 
         query = query.Where(p => p.Status == EntityStatus.Active);
 
-        return await query
+        var products = await query
             .OrderBy(p => p.Name)
             .ToListAsync();
+
+        if (products.Count == 0)
+            return OperationResult<List<Product>>.Failure(ErrorCode.ProductNotFound, "No products found");
+
+        return OperationResult<List<Product>>.Success(products);
     }
 
-    private async Task<List<int>> GetCategoryAndChildrenIds(int categoryId)
+    private async Task<OperationResult<List<int>>> GetCategoryAndChildrenIds(int categoryId)
     {
         var categories = await _context.Categories.ToListAsync();
+
+        if (categories.Count == 0)
+            return OperationResult<List<int>>.Failure(ErrorCode.CategoryNotFound, "No categories found");
+
         var result = new List<int> { categoryId };
 
         void AddChildrenIds(int parentId)
@@ -89,13 +127,19 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
         }
 
         AddChildrenIds(categoryId);
-        return result;
+
+        if (result.Count == 0)
+            return OperationResult<List<int>>.Failure(ErrorCode.CategoryNotFound, "No categories found");
+
+        return OperationResult<List<int>>.Success(result);
     }
 
     // Burada categoryId ile recursive olarak tüm child kategorileri
     // de arayıp döndüren bir yapı var
-    public async Task<(List<ProductWithCategoryDto> data, int total)> GetProductsWithCategoriesAsync(int pageNumber = 1,
-        int pageSize = 10, int? categoryId = null, string? searchText = null)
+    public async Task<PaginatedOperationResult<(List<ProductWithCategoryDto> data, int total)>>
+        GetProductsWithCategoriesAsync(
+            int pageNumber = 1,
+            int pageSize = 10, int? categoryId = null, string? searchText = null)
     {
         var parameters = new[]
         {
@@ -139,6 +183,13 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
             });
         }
 
-        return (products, totalCount);
+        return PaginatedOperationResult<(List<ProductWithCategoryDto> data, int total)>.Success((products, totalCount),
+            new PaginatedOperationResult<(List<ProductWithCategoryDto> data, int total)>.PaginationMetadata()
+            {
+                Page = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            });
     }
 }

@@ -1,7 +1,10 @@
+using JoyGame.CaseStudy.API.Extensions;
+using JoyGame.CaseStudy.API.Models;
 using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Exceptions;
 using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,135 +21,92 @@ public class ProductController(
 
     [HttpGet]
     [Authorize]
-    [ProducesResponseType(typeof(Result<List<ProductDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<ProductDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
-        var products = await _productService.GetAllAsync();
-        return HandleResult(Result<List<ProductDto>>.Success(products));
+        var productsOperationResult = await _productService.GetAllAsync();
+        return HandleResult(productsOperationResult.ToApiResponse());
     }
 
     [HttpGet("{id:int}")]
     [Authorize]
-    [ProducesResponseType(typeof(Result<ProductDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(Result<ProductDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(int id)
     {
-        var product = await _productService.GetByIdAsync(id);
-        return HandleResult(Result<ProductDto>.Success(product));
+        var productOperationResult = await _productService.GetByIdAsync(id);
+        return HandleResult(productOperationResult.ToApiResponse());
     }
 
     [HttpGet("by-slug/{slug}")]
     [Authorize]
-    [ProducesResponseType(typeof(Result<ProductDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(Result<ProductDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetBySlug(string slug)
     {
-        var product = await _productService.GetBySlugAsync(slug);
-        return HandleResult(Result<ProductDto>.Success(product));
+        var productOperationResult = await _productService.GetBySlugAsync(slug);
+        return HandleResult(productOperationResult.ToApiResponse());
     }
 
     [HttpGet("category/{categoryId}")]
     [Authorize]
-    [ProducesResponseType(typeof(Result<List<ProductDto>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(Result<>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<List<ProductDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetByCategory(int categoryId)
     {
-        try
-        {
-            var products = await _productService.GetByCategoryIdAsync(categoryId);
-            return HandleResult(Result<List<ProductDto>>.Success(products));
-        }
-        catch (EntityNotFoundException)
-        {
-            return HandleResult(Result<object>.Failure($"Category with ID {categoryId} not found"));
-        }
+        var productsOperationResult = await _productService.GetByCategoryIdAsync(categoryId);
+        return HandleResult(productsOperationResult.ToApiResponse());
     }
 
     [HttpGet("search")]
     [Authorize]
-    [ProducesResponseType(typeof(Result<List<ProductDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<ProductDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Search([FromQuery] string searchTerm, [FromQuery] int? categoryId = null)
     {
-        var products = await _productService.SearchAsync(searchTerm, categoryId);
-        return HandleResult(Result<List<ProductDto>>.Success(products));
+        var productsOperationResult = await _productService.SearchAsync(searchTerm, categoryId);
+        return HandleResult(productsOperationResult.ToApiResponse());
     }
 
     [HttpPost]
     [Authorize(Policy = "ProductManagement")]
-    [ProducesResponseType(typeof(Result<ProductDto>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(Result<>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateProductDto createProductDto)
     {
-        try
-        {
-            var product = await _productService.CreateAsync(createProductDto);
+        var productOperationResult = await _productService.CreateAsync(createProductDto);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = product.Id },
-                Result<ProductDto>.Success(product));
-        }
-        catch (BusinessRuleException ex)
-        {
-            _logger.LogWarning(ex, "Failed to create product");
-            return HandleResult(Result<object>.Failure(ex.Message));
-        }
+        return HandleResult(productOperationResult.ToApiResponse());
     }
 
     [HttpPut("{id}")]
     [Authorize(Policy = "ProductManagement")]
-    [ProducesResponseType(typeof(Result<ProductDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(Result<>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(Result<>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateProductDto updateProductDto)
     {
-        try
-        {
-            var product = await _productService.UpdateAsync(id, updateProductDto);
-            return HandleResult(Result<ProductDto>.Success(product));
-        }
-        catch (EntityNotFoundException)
-        {
-            return HandleResult(Result<object>.Failure($"Product with ID {id} not found"));
-        }
-        catch (BusinessRuleException ex)
-        {
-            _logger.LogWarning(ex, "Failed to update product {ProductId}", id);
-            return HandleResult(Result<object>.Failure(ex.Message));
-        }
+        var productOperationResult = await _productService.UpdateAsync(id, updateProductDto);
+        return HandleResult(productOperationResult.ToApiResponse());
     }
 
     [HttpDelete("{id}")]
     [Authorize(Policy = "ProductManagement")]
-    [ProducesResponseType(typeof(Result<>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(Result<>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id)
     {
-        try
-        {
-            var result = await _productService.DeleteAsync(id);
-            return HandleResult(Result<string>.Success("Product deleted successfully"));
-        }
-        catch (EntityNotFoundException)
-        {
-            return HandleResult(Result<object>.Failure($"Product with ID {id} not found"));
-        }
-        catch (BusinessRuleException ex)
-        {
-            _logger.LogWarning(ex, "Failed to delete product {ProductId}", id);
-            return HandleResult(Result<object>.Failure(ex.Message));
-        }
+        var deleteOperationResult = await _productService.DeleteAsync(id);
+        return HandleResult(deleteOperationResult.ToApiResponse());
     }
 
     [HttpGet("with-categories")]
     [Authorize(Policy = "ProductView")]
-    [ProducesResponseType(typeof(Result<List<ProductWithCategoryDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<ProductWithCategoryDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetProductsWithCategories([FromQuery] int page = 1,
         [FromQuery] int pageSize = 10, [FromQuery] int? categoryId = null, [FromQuery] string? searchText = null)
     {
-        var productsDataAndTotal = await _productService.GetProductsWithCategoriesAsync(page, pageSize, categoryId, searchText);
-        return HandleResult(PaginationResult<List<ProductWithCategoryDto>>.Success(productsDataAndTotal.data,
-            page, pageSize,
-            productsDataAndTotal.total));
+        var productsDataAndTotalOperationResult =
+            await _productService.GetProductsWithCategoriesAsync(page, pageSize, categoryId, searchText);
+        return HandleResult(productsDataAndTotalOperationResult.ToApiResponse());
     }
 }

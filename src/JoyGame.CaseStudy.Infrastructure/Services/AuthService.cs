@@ -2,11 +2,14 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.DTOs;
 using JoyGame.CaseStudy.Application.Exceptions;
-using JoyGame.CaseStudy.Application.Interfaces;
+using JoyGame.CaseStudy.Application.Interfaces.Repositories;
+using JoyGame.CaseStudy.Application.Interfaces.Services;
 using JoyGame.CaseStudy.Domain.Entities;
 using JoyGame.CaseStudy.Domain.Enums;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -23,34 +26,46 @@ public class AuthService(
     private readonly IConfiguration _configuration = configuration;
     private readonly ILogger<AuthService> _logger = logger;
 
-    public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
+    public async Task<OperationResult<AuthResponseDto>> LoginAsync(LoginRequestDto request)
     {
-        var user = await _userRepository.GetByUsernameAsync(request.Username);
+        var userOperationResult = await _userRepository.GetByUsernameAsync(request.Username);
 
-        if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
+        if (userOperationResult.IsSuccess == false
+            || userOperationResult.Data == null
+            || !VerifyPassword(request.Password, userOperationResult.Data.PasswordHash))
         {
             _logger.LogWarning("Failed login attempt for username: {Username}", request.Username);
-            throw new BusinessRuleException("Invalid username or password");
+            return OperationResult<AuthResponseDto>.Failure(ErrorCode.InvalidCredentials,
+                "Invalid username or password");
         }
 
-        if (user.Status != EntityStatus.Active)
+        if (userOperationResult.Data.Status != EntityStatus.Active)
         {
             _logger.LogWarning("Login attempt for inactive user: {Username}", request.Username);
-            throw new BusinessRuleException("Account is not active");
+            return OperationResult<AuthResponseDto>.Failure(ErrorCode.UserInactive, "User is inactive");
         }
 
-        var permissions = await _userRepository.GetUserPermissionsAsync(user.Id);
+        var permissionsOperationResult = await _userRepository.GetUserPermissionsAsync(userOperationResult.Data.Id);
 
-        var token = GenerateJwtToken(user, permissions);
+        if (!permissionsOperationResult.IsSuccess)
+        {
+            _logger.LogError("Failed to retrieve permissions for user: {Username}", request.Username);
+            return OperationResult<AuthResponseDto>.Failure(permissionsOperationResult.ErrorCode,
+                permissionsOperationResult.ErrorMessage);
+        }
 
-        return new AuthResponseDto
+        var token = GenerateJwtToken(userOperationResult.Data, permissionsOperationResult.Data);
+
+        var response = new AuthResponseDto
         {
             Token = token,
-            User = UserDto.MapToUserDto(user)
+            User = UserDto.MapToUserDto(userOperationResult.Data)
         };
+
+        return OperationResult<AuthResponseDto>.Success(response);
     }
 
-    public async Task<bool> ValidateTokenAsync(string token)
+    public async Task<OperationResult<bool>> ValidateTokenAsync(string token)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Secret"]);
@@ -70,54 +85,80 @@ public class AuthService(
         }
         catch
         {
-            return false;
+            return OperationResult<bool>.Failure(ErrorCode.InvalidToken, "Invalid token");
         }
 
-        return true;
+        return OperationResult<bool>.Success(true);
     }
 
-    public async Task<ForgotPasswordResponseDto> ForgotPasswordAsync(string email)
+    public async Task<OperationResult<ForgotPasswordResponseDto>> ForgotPasswordAsync(string email)
     {
-        var user = await _userRepository.GetByEmailAsync(email);
+        var userOperationResult = await _userRepository.GetByEmailAsync(email);
 
-        if (user == null)
+        if (userOperationResult.IsSuccess == false)
         {
             _logger.LogInformation("Password reset requested for non-existent email: {Email}", email);
-            return new()
-            {
-                ResetToken = string.Empty,
-                Email = email
-            };
+            return OperationResult<ForgotPasswordResponseDto>.Success(
+                new() { ResetToken = String.Empty, Email = email });
         }
 
         var resetToken = GeneratePasswordResetToken();
 
-        await _userRepository.SaveResetTokenAsync(user.Id, resetToken, DateTime.UtcNow.AddHours(1));
+        var saveResetTokenOperationResult = await _userRepository.SaveResetTokenAsync(userOperationResult.Data.Id,
+            resetToken, DateTime.UtcNow.AddHours(1));
 
-        return new()
+        if (saveResetTokenOperationResult.IsSuccess == false)
+        {
+            _logger.LogError("Failed to save reset token for user: {Username}", userOperationResult.Data.Username);
+            return OperationResult<ForgotPasswordResponseDto>.Failure(saveResetTokenOperationResult.ErrorCode,
+                saveResetTokenOperationResult.ErrorMessage);
+        }
+
+        var response = new ForgotPasswordResponseDto()
         {
             ResetToken = resetToken,
             ExpiryDate = DateTime.UtcNow.AddHours(1),
             Email = email
         };
+
+        _logger.LogInformation("Password reset requested for email: {Email}", email);
+        return OperationResult<ForgotPasswordResponseDto>.Success(response);
     }
 
-    public async Task<bool> ResetPasswordAsync(ResetPasswordDto request)
+    public async Task<OperationResult<bool>> ResetPasswordAsync(ResetPasswordDto request)
     {
-        if (!await _userRepository.ValidateResetTokenAsync(request.Email, request.ResetToken))
+        if ((await _userRepository.ValidateResetTokenAsync(request.Email, request.ResetToken)).IsSuccess == false)
         {
-            throw new BusinessRuleException("Invalid or expired reset token");
+            return OperationResult<bool>.Failure(ErrorCode.InvalidToken, "Invalid reset token");
         }
 
-        var user = await _userRepository.GetByEmailAsync(request.Email);
+        var userOperationResult = await _userRepository.GetByEmailAsync(request.Email);
 
-        user.PasswordHash = HashPassword(request.NewPassword);
-        await _userRepository.UpdateAsync(user);
+        if (userOperationResult.IsSuccess == false)
+        {
+            _logger.LogWarning("Attempted to reset password for non-existent email: {Email}", request.Email);
+            return OperationResult<bool>.Failure(ErrorCode.UserNotFound, "User not found");
+        }
 
-        await _userRepository.MarkResetTokenAsUsedAsync(request.ResetToken);
+        userOperationResult.Data.PasswordHash = HashPassword(request.NewPassword);
+        var updateOperationResult = await _userRepository.UpdateAsync(userOperationResult.Data);
 
-        _logger.LogInformation("Password reset successful for user: {Username}", user.Username);
-        return true;
+        if (updateOperationResult.IsSuccess == false)
+        {
+            _logger.LogError("Failed to reset password for user: {Username}", userOperationResult.Data.Username);
+            return OperationResult<bool>.Failure(updateOperationResult.ErrorCode, updateOperationResult.ErrorMessage);
+        }
+
+        var markResetTokenAsUsedOperationResult = await _userRepository.MarkResetTokenAsUsedAsync(request.ResetToken);
+
+        if (markResetTokenAsUsedOperationResult.IsSuccess == false)
+        {
+            _logger.LogError("Failed to mark reset token as used for user: {Username}",
+                userOperationResult.Data.Username);
+        }
+
+        _logger.LogInformation("Password reset successful for user: {Username}", userOperationResult.Data.Username);
+        return OperationResult<bool>.Success(true);
     }
 
     private string GenerateJwtToken(User user, List<string> permissions)
@@ -162,14 +203,6 @@ public class AuthService(
         var inputHash = Convert.ToBase64String(
             SHA256.HashData(Encoding.UTF8.GetBytes(password)));
         return inputHash == hash;
-    }
-
-    private static string GenerateRefreshToken()
-    {
-        var randomNumber = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomNumber);
-        return Convert.ToBase64String(randomNumber);
     }
 
     private static string GeneratePasswordResetToken()
