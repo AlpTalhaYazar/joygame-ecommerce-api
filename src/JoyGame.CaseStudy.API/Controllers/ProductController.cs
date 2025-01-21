@@ -1,9 +1,6 @@
 using JoyGame.CaseStudy.API.Extensions;
 using JoyGame.CaseStudy.API.Models;
-using JoyGame.CaseStudy.Application.Common;
 using JoyGame.CaseStudy.Application.DTOs;
-using JoyGame.CaseStudy.Application.Exceptions;
-using JoyGame.CaseStudy.Application.Interfaces;
 using JoyGame.CaseStudy.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
