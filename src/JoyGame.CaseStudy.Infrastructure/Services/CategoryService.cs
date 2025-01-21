@@ -53,9 +53,9 @@ public class CategoryService(
         return OperationResult<List<CategoryDto>>.Success(categories);
     }
 
-    public async Task<OperationResult<List<CategoryTreeDto>>> GetCategoryTreeAsync()
+    public async Task<OperationResult<List<CategoryTreeDto>>> GetCategoryTreeAsync(string? slug = null)
     {
-        var categoriesOperationResult = await _categoryRepository.GetCategoryTreeAsync();
+        var categoriesOperationResult = await _categoryRepository.GetCategoryTreeAsync(slug);
 
         if (!categoriesOperationResult.IsSuccess)
             return OperationResult<List<CategoryTreeDto>>.Failure(categoriesOperationResult.ErrorCode,
@@ -202,6 +202,7 @@ public class CategoryService(
             {
                 Id = c.Id,
                 Name = c.Name,
+                Description = c.Description,
                 Slug = c.Slug,
                 ParentId = c.ParentId,
                 Children = BuildCategoryTree(categories, c.Id)

@@ -30,7 +30,7 @@ public class CategoryController(
     [HttpGet("tree")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<List<CategoryTreeDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetTree()
+    public async Task<IActionResult> GetTree([FromQuery] string? slug)
     {
         var categoryTreeOperationResult = await _categoryService.GetCategoryTreeAsync();
         return HandleResult(categoryTreeOperationResult.ToApiResponse());

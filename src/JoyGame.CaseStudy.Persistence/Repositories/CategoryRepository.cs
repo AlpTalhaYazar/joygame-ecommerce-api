@@ -13,11 +13,11 @@ public class CategoryRepository(ApplicationDbContext context) : BaseRepository<C
 {
     private readonly ApplicationDbContext _context = context;
 
-    public async Task<OperationResult<List<Category>>> GetCategoryTreeAsync()
+    public async Task<OperationResult<List<Category>>> GetCategoryTreeAsync(string? slug)
     {
         var categories = await _context.Categories
             .Include(c => c.Children)
-            .Where(c => c.ParentId == null)
+            .Where(c => c.ParentId == null && (slug == null || c.Slug == slug))
             .ToListAsync();
 
         if (categories.Count == 0)
