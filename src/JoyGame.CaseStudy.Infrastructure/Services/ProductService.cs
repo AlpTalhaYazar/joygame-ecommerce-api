@@ -20,6 +20,20 @@ public class ProductService(
     private readonly ICategoryRepository _categoryRepository = categoryRepository;
     private readonly ILogger<ProductService> _logger = logger;
 
+    public async Task<OperationResult<ProductWithCategoryDto>> GetByIdDetailedAsync(int id)
+    {
+        var productOperationResult = await _productRepository.GetByIdDetailedAsync(id);
+
+        if (productOperationResult.IsSuccess == false)
+        {
+            _logger.LogWarning("Attempted to get non-existent product with ID: {ProductId}", id);
+            return OperationResult<ProductWithCategoryDto>.Failure(productOperationResult.ErrorCode,
+                productOperationResult.ErrorMessage);
+        }
+
+        return OperationResult<ProductWithCategoryDto>.Success(productOperationResult.Data);
+    }
+
     public async Task<OperationResult<ProductDto?>> GetByIdAsync(int id)
     {
         var productOperationResult = await _productRepository.GetByIdAsync(id);
@@ -263,8 +277,9 @@ public class ProductService(
         return OperationResult<List<ProductDto>>.Success(products);
     }
 
-    public async Task<PaginatedOperationResult<(List<ProductWithCategoryDto> data, int total)>> GetProductsWithCategoriesAsync(
-        int pageNumber = 1, int pageSize = 10, int? categoryId = null, string? searchText = null)
+    public async Task<PaginatedOperationResult<(List<ProductWithCategoryDto> data, int total)>>
+        GetProductsWithCategoriesAsync(
+            int pageNumber = 1, int pageSize = 10, int? categoryId = null, string? searchText = null)
     {
         var productsDataAndTotalOperationResult =
             await _productRepository.GetProductsWithCategoriesAsync(pageNumber, pageSize, categoryId, searchText);

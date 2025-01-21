@@ -6,6 +6,7 @@ namespace JoyGame.CaseStudy.Application.Interfaces.Repositories;
 
 public interface IProductRepository : IBaseRepository<Product>
 {
+    Task<OperationResult<ProductWithCategoryDto>> GetByIdDetailedAsync(int id);
     Task<OperationResult<Product?>> GetBySlugAsync(string slug);
     Task<OperationResult<List<Product>>> GetByCategoryIdAsync(int categoryId);
     Task<OperationResult<List<Product>>> GetActiveByCategoryIdAsync(int categoryId);

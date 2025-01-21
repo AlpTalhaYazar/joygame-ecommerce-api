@@ -13,6 +13,7 @@ public record ProductDto
     public string? ImageUrl { get; init; }
     public int CategoryId { get; init; }
     public string CategoryName { get; init; }
+    public string CategorySlug { get; init; }
     public EntityStatus Status { get; init; }
     public ProductStatus BusinessStatus { get; init; }
     public int StockQuantity { get; init; }
@@ -29,6 +30,7 @@ public record ProductDto
             ImageUrl = product.ImageUrl,
             CategoryId = product.CategoryId,
             CategoryName = category?.Name ?? "Unknown Category",
+            CategorySlug = category?.Slug ?? "unknown-category",
             Status = product.Status,
             BusinessStatus = product.BusinessStatus,
             StockQuantity = product.StockQuantity

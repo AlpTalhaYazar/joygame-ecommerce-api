@@ -5,6 +5,7 @@ namespace JoyGame.CaseStudy.Application.Interfaces.Services;
 
 public interface IProductService
 {
+    Task<OperationResult<ProductWithCategoryDto>> GetByIdDetailedAsync(int id);
     Task<OperationResult<ProductDto?>> GetByIdAsync(int id);
     Task<OperationResult<ProductDto?>> GetBySlugAsync(string slug);
     Task<OperationResult<List<ProductDto>>> GetAllAsync();

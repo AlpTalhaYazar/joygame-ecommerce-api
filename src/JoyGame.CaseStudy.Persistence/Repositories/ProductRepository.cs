@@ -14,6 +14,33 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
 {
     private readonly ApplicationDbContext _context = context;
 
+    public async Task<OperationResult<ProductWithCategoryDto>> GetByIdDetailedAsync(int id)
+    {
+        var product = await _context.Products
+            .Include(p => p.Category)
+            .Where(p => p.Id == id)
+            .Select(p => new ProductWithCategoryDto
+            {
+                ProductId = p.Id,
+                ProductName = p.Name,
+                ProductDescription = p.Description,
+                ProductSlug = p.Slug,
+                Price = p.Price,
+                StockQuantity = p.StockQuantity,
+                BusinessStatus = p.BusinessStatus,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                CategoryDescription = p.Category.Description,
+                CategorySlug = p.Category.Slug
+            })
+            .FirstOrDefaultAsync();
+
+        if (product == null)
+            return OperationResult<ProductWithCategoryDto>.Failure(ErrorCode.ProductNotFound, "Product not found");
+
+        return OperationResult<ProductWithCategoryDto>.Success(product);
+    }
+
     public async Task<OperationResult<Product?>> GetBySlugAsync(string slug)
     {
         var product = await _context.Products
@@ -88,8 +115,9 @@ public class ProductRepository(ApplicationDbContext context) : BaseRepository<Pr
         {
             searchTerm = searchTerm.ToLower();
             query = query.Where(p =>
-                EF.Functions.Like(p.Name, $"%{searchTerm}%") || (String.IsNullOrWhiteSpace(p.Description) &&
-                                                                 EF.Functions.Like(p.Description, $"%{searchTerm}%")));
+                EF.Functions.Like(p.Name, $"%{searchTerm}%")
+                || (String.IsNullOrWhiteSpace(p.Description)
+                    && EF.Functions.Like(p.Description, $"%{searchTerm}%")));
         }
 
         query = query.Where(p => p.Status == EntityStatus.Active);

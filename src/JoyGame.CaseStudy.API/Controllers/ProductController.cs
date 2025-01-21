@@ -36,6 +36,16 @@ public class ProductController(
         return HandleResult(productOperationResult.ToApiResponse());
     }
 
+    [HttpGet("detailed/{id:int}")]
+    [Authorize(Policy = "ProductView")]
+    [ProducesResponseType(typeof(ApiResponse<ProductWithCategoryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ProductWithCategoryDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByIdDetailed(int id)
+    {
+        var productOperationResult = await _productService.GetByIdDetailedAsync(id);
+        return HandleResult(productOperationResult.ToApiResponse());
+    }
+
     [HttpGet("by-slug/{slug}")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status200OK)]
